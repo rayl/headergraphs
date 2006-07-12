@@ -93,6 +93,10 @@ sub gather
 	chomp @incs;
 	close F;
 
+	my $dir = $file;
+	$dir =~ s,(.*)/.*,$1,;
+	map {s,","$dir/,} @incs;
+
 	$includes{$file} = \@incs;
 
 	for my $x (@incs)
