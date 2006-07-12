@@ -115,14 +115,39 @@ chdir "$tree/include" || die "Bad tree: $tree";
 map {gather $_} map {interesting_files $_} interesting_dirs;
 
 
-#
-# Compact the %included arrays, warning about double inclusions.
-#
+
+sub header
+{
+	print "\n\n==========================\n  $_[0]\n==========================\n";
+}
+
+#----------------------------------------------------------
+header "Double Inclusion";
 for my $x (keys %included)
   {
 	my %u;
 	map { $u{$_}++ } @{$included{$x}};
-	map { print "$_ includes $x $u{$_} times\n" if $u{$_} > 1 } keys %u;
+	map { print "!! $_ includes $x $u{$_} times\n" if $u{$_} > 1 } keys %u;
 	$included{$x} = [keys %u];
   }
+
+
+#----------------------------------------------------------
+header "Includes";
+for my $x (sort keys %includes)
+  {
+	print "$x:\n";
+	print "\t$_\n" for @{$includes{$x}};
+  }
+
+
+#----------------------------------------------------------
+header "Included by";
+for my $x (sort keys %included)
+  {
+	print "$x:\n";
+	print "\t$_\n" for @{$included{$x}};
+  }
+
+
 
