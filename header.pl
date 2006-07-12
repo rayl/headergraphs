@@ -14,7 +14,8 @@ my $tree = "/home/rayl/proj/linux";
 my ($arch, $mach) = 
 	#("arm",   "ep93xx");
 	#("arm",   "versatile");
-	("i386",  "generic");
+	#("i386",  "generic");
+	("x86_64",  "");
 
 
 
@@ -88,6 +89,8 @@ sub gather
 {
 	my ($file) = @_;
 
+	# print "= $file\n";
+
 	open F, "<$file" || die "Can't read $file!";
 	my @incs = grep {s,^\s*#\s*include\s*(["<][^>"]*[">]).*,$1,} <F>;
 	chomp @incs;
@@ -131,8 +134,26 @@ for my $x (keys %included)
   {
 	my %u;
 	map { $u{$_}++ } @{$included{$x}};
-	map { print "!! $_ includes $x $u{$_} times\n" if $u{$_} > 1 } keys %u;
+	map { print "!!   DOUBLE-INC: $_ includes $x $u{$_} times\n" if $u{$_} > 1 } keys %u;
 	$included{$x} = [keys %u];
+  }
+
+
+#----------------------------------------------------------
+header "Non-existent Files";
+for my $x (keys %includes)
+  {
+	for my $i (@{$includes{$x}})
+	  {
+		$i =~ m,^.(.*).$,;
+		my $f = $1;
+
+		next if -f $f;
+		next if $f eq "stdarg.h";
+
+		print (($f =~ m,^asm/,) ? "!!  MISSING-ASM: " : "!! NON-EXISTENT: ");
+		print "$x includes $i\n";
+	  }
   }
 
 
