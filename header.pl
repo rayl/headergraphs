@@ -7,29 +7,32 @@ use warnings;
 # the location of the linux kernel tree
 my $tree = "/home/rayl/proj/linux";
 
+
 # the specific asm-* directories of interest.
 # the heuristic used by we_want_dir() is imperfect, but
 # should be adequate for i386, arm, mips, and cris, at least...
-my $arch = "arm";
-my $mach = "ep93xx";
+my ($arch, $mach) = 
+	#("arm",   "ep93xx");
+	#("arm",   "versatile");
+	("i386",  "generic");
+
+
+
+
+
+# Who do we include?
+my %includes;
+
+# Who includes us?
+my %included;
+
+
 
 
 
 
 #
-# Work in the linux/include directory
-#
-chdir "$tree/include" || die "Bad tree: $tree";
-
-#
-# Find all directories in the include tree
-#
-my @incdirs = `find . -type d`;
-map {s/^..//} @incdirs;
-chomp @incdirs;
-
-#
-# Routine to decide whether we want to process a directory.
+# Decide whether we want to process a directory.
 #
 sub we_want_dir
 {
@@ -45,6 +48,17 @@ sub we_want_dir
 }
 
 #
+# Find all interesting directories in the include tree
+#
+sub interesting_dirs
+{
+	my @d = `find . -type d`;
+	map {s/^..//} @d;
+	chomp @d;
+	sort grep {we_want_dir $_} @d;
+}
+
+#
 # Routine to decide whether we want to process a file
 #
 sub we_want_file
@@ -57,16 +71,14 @@ sub we_want_file
 	return 1;
 }
 
-
 #
-# Who do we include?  header -> [ child_header ]
+# Find all interesting files in a directory
 #
-my %includes;
-
-#
-# Who includes us?    header -> [ parent_header ]
-#
-my %included;
+sub interesting_files
+{
+	my ($d) = @_;
+	sort grep {we_want_file $_} <$d/*.h>;
+}
 
 
 #
@@ -78,9 +90,9 @@ sub gather
 
 	open F, "<$file" || die "Can't read $file!";
 	my @incs = grep {s,^\s*#\s*include\s*(["<][^>"]*[">]).*,$1,} <F>;
+	chomp @incs;
 	close F;
 
-	chomp @incs;
 	$includes{$file} = \@incs;
 
 	for my $x (@incs)
@@ -92,26 +104,16 @@ sub gather
 
 
 #
-# Gather the include lines from all interesting header files.
+# Work at the top of the kernel include tree
 #
-for my $dir (sort @incdirs)
-  {
-	next unless we_want_dir $dir;
-	for my $file (sort <$dir/*.h>)
-	  {
-		next unless we_want_file $file;
-		gather($file);
-	  }
-  }
+chdir "$tree/include" || die "Bad tree: $tree";
+
 
 #
-# Warn about double inclusion.
+# Gather the include lines from all files of interest.
 #
-sub doubleinc
-{
-	my ($f, $h, $n) = @_;
-	warn "$f includes $h $n times.";
-}
+map {gather $_} map {interesting_files $_} interesting_dirs;
+
 
 #
 # Compact the %included arrays, warning about double inclusions.
@@ -120,15 +122,7 @@ for my $x (keys %included)
   {
 	my %u;
 	map { $u{$_}++ } @{$included{$x}};
-	map { my $n = $u{$_}; doubleinc($_, $x, $n) if $n > 1 } keys %u;
+	map { print "$_ includes $x $u{$_} times\n" if $u{$_} > 1 } keys %u;
 	$included{$x} = [keys %u];
   }
-
-
-
-
-__END__
-
-# create "includes" map (file -> [file])
-# create "included" map (file -> [file])
 
