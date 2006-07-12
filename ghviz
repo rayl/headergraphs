@@ -1,0 +1,7 @@
+#!/bin/sh
+
+TMPDIR=/var/tmp
+tmp=$(mktemp $TMPDIR/ghviz.XXXXXX)
+hviz $* | dot -Tps > $tmp
+gv $tmp
+rm $tmp
