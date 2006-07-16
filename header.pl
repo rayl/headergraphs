@@ -123,56 +123,71 @@ map {gather $_} map {interesting_files $_} interesting_dirs;
 
 
 
+
+
+
+
 sub header
 {
 	print "\n\n==========================\n  $_[0]\n==========================\n";
 }
 
 #----------------------------------------------------------
-header "Double Inclusion";
-for my $x (keys %included)
-  {
-	my %u;
-	map { $u{$_}++ } @{$included{$x}};
-	map { print "!!   DOUBLE-INC: $_ includes $x $u{$_} times\n" if $u{$_} > 1 } keys %u;
-	$included{$x} = [keys %u];
-  }
-
-
-#----------------------------------------------------------
-header "Non-existent Files";
-for my $x (keys %includes)
-  {
-	for my $i (@{$includes{$x}})
+sub report_double
+{
+	header "Double Inclusion";
+	for my $x (keys %included)
 	  {
-		$i =~ m,^.(.*).$,;
-		my $f = $1;
-
-		next if -f $f;
-		next if $f eq "stdarg.h";
-
-		print (($f =~ m,^asm/,) ? "!!  MISSING-ASM: " : "!! NON-EXISTENT: ");
-		print "$x includes $i\n";
+		my %u;
+		map { $u{$_}++ } @{$included{$x}};
+		map { print "!!   DOUBLE-INC: $_ includes $x $u{$_} times\n" if $u{$_} > 1 } keys %u;
+		$included{$x} = [keys %u];
 	  }
-  }
+}
 
 
 #----------------------------------------------------------
-header "Includes";
-for my $x (sort keys %includes)
-  {
-	print "$x:\n";
-	print "\t$_\n" for @{$includes{$x}};
-  }
-
+sub report_nonexistent
+{
+	header "Non-existent Files";
+	for my $x (keys %includes)
+	  {
+		for my $i (@{$includes{$x}})
+		  {
+			$i =~ m,^.(.*).$,;
+			my $f = $1;
+	
+			next if -f $f;
+			next if $f eq "stdarg.h";
+	
+			print (($f =~ m,^asm/,) ? "!!  MISSING-ASM: " : "!! NON-EXISTENT: ");
+			print "$x includes $i\n";
+		  }
+	  }
+}
 
 #----------------------------------------------------------
-header "Included by";
-for my $x (sort keys %included)
-  {
-	print "$x:\n";
-	print "\t$_\n" for @{$included{$x}};
-  }
+sub report_includes
+{
+	header "Includes";
+	for my $x (sort keys %includes)
+	  {
+		print "$x:\n";
+		print "\t$_\n" for @{$includes{$x}};
+	  }
+}
 
+#----------------------------------------------------------
+sub report_included
+{
+	header "Included by";
+	for my $x (sort keys %included)
+	  {
+		print "$x:\n";
+		print "\t$_\n" for @{$included{$x}};
+	  }
+}
 
+report_double;
+report_nonexistent;
 
