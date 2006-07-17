@@ -188,6 +188,25 @@ sub report_included
 	  }
 }
 
-report_double;
-report_nonexistent;
+#report_double;
+#report_nonexistent;
+
+sub repl
+{
+	use Term::ReadLine;
+
+	my $term = new Term::ReadLine; # ’Simple Perl calc’;
+	my $prompt = "Enter a command: ";
+	my $OUT = $term->OUT || \*STDOUT;
+
+	while (defined ($_ = $term->readline($prompt)))
+	  {
+		my $res = eval($_);
+		warn $@ if $@;
+		print $OUT $res, "\n" unless $@;
+		$term->addhistory($_) if /\S/;
+	  }
+}
+
+repl;
 
