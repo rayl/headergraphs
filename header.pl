@@ -101,6 +101,9 @@ sub gather
 	$dir =~ s,(.*)/.*,$1,;
 	map {s,","$dir/,} @incs;
 
+	map {s/^.//} @incs;
+	map {s/.$//} @incs;
+
 	$includes{$file} = \@incs;
 
 	for my $x (@incs)
@@ -155,16 +158,16 @@ sub report_nonexistent
 	header "Non-existent Files";
 	for my $x (keys %includes)
 	  {
-		for my $i (@{$includes{$x}})
+		for my $f (@{$includes{$x}})
 		  {
-			$i =~ m,^.(.*).$,;
-			my $f = $1;
+			#$i =~ m,^.(.*).$,;
+			#my $f = $1;
 	
 			next if -f $f;
 			next if $f eq "stdarg.h";
 			next if $f =~ m,^asm/,;
 
-			print "!! NON-EXISTENT: $x includes $i\n";
+			print "!! NON-EXISTENT: $x includes $f\n";
 		  }
 	  }
 }
@@ -175,16 +178,16 @@ sub report_missingasm
 	header "Missing ASM Files";
 	for my $x (keys %includes)
 	  {
-		for my $i (@{$includes{$x}})
+		for my $f (@{$includes{$x}})
 		  {
-			$i =~ m,^.(.*).$,;
-			my $f = $1;
+			#$i =~ m,^.(.*).$,;
+			#my $f = $1;
 	
 			next if -f $f;
 			next if $f eq "stdarg.h";
 			next unless $f =~ m,^asm/,;
 	
-			print "!!  MISSING-ASM: $x includes $i\n";
+			print "!!  MISSING-ASM: $x includes $f\n";
 		  }
 	  }
 }
@@ -211,6 +214,50 @@ sub report_included
 	  }
 }
 
+#----------------------------------------------------------
+
+sub graph_file_out
+{
+	my ($file, $n, $edges) = @_;
+	return if $n == 0;
+	#return if $edges->{$file};
+	$edges->{$file} ||= {};
+	for my $e (@{$includes{$file}})
+	  {
+		next if $edges->{$file}->{$e};
+		$edges->{$file}->{$e} = 1;
+		graph_file_out($e, $n-1, $edges);
+	  }
+}
+
+sub graph_file_in
+{
+	my ($file, $n, $edges) = @_;
+	return if $n == 0;
+	for my $e (keys %{$included{$file}})
+	  {
+		$edges->{$e} ||= {};
+		next if $edges->{$e}->{$file};
+		$edges->{$e}->{$file} = 1;
+		graph_file_in($e, $n-1, $edges);
+	  }
+}
+
+sub graph_file
+{
+	my ($file, $out, $in) = @_;
+	my %e1;
+	print "digraph \"$file\" {\n";
+	graph_file_out($file, $out, \%e1);
+	graph_file_in($file, $in, \%e1);
+	for my $e (sort keys %e1)
+	  {
+		print "\t\"$e\" -> \"$_\";\n" for keys %{$e1{$e}};
+	  }
+	print "};\n";
+}
+
+
 sub repl
 {
 	use Term::ReadLine;
@@ -230,8 +277,9 @@ sub repl
 	print "\n\n";
 }
 
-report_double;
-report_nonexistent;
-report_missingasm;
-repl;
+#report_double;
+#report_nonexistent;
+#report_missingasm;
+#repl;
+graph_file @ARGV;
 
