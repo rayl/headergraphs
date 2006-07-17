@@ -162,9 +162,29 @@ sub report_nonexistent
 	
 			next if -f $f;
 			next if $f eq "stdarg.h";
+			next if $f =~ m,^asm/,;
+
+			print "!! NON-EXISTENT: $x includes $i\n";
+		  }
+	  }
+}
+
+#----------------------------------------------------------
+sub report_missingasm
+{
+	header "Missing ASM Files";
+	for my $x (keys %includes)
+	  {
+		for my $i (@{$includes{$x}})
+		  {
+			$i =~ m,^.(.*).$,;
+			my $f = $1;
 	
-			print (($f =~ m,^asm/,) ? "!!  MISSING-ASM: " : "!! NON-EXISTENT: ");
-			print "$x includes $i\n";
+			next if -f $f;
+			next if $f eq "stdarg.h";
+			next unless $f =~ m,^asm/,;
+	
+			print "!!  MISSING-ASM: $x includes $i\n";
 		  }
 	  }
 }
@@ -191,9 +211,6 @@ sub report_included
 	  }
 }
 
-#report_double;
-#report_nonexistent;
-
 sub repl
 {
 	use Term::ReadLine;
@@ -213,5 +230,8 @@ sub repl
 	print "\n\n";
 }
 
-repl;
+report_double;
+report_nonexistent;
+report_missingasm;
+#repl;
 
