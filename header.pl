@@ -233,5 +233,5 @@ sub repl
 report_double;
 report_nonexistent;
 report_missingasm;
-#repl;
+repl;
 
