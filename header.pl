@@ -21,13 +21,14 @@ my ($arch, $mach) =
 
 
 
-# Who do we include?
+# Who do we include? parent => [ child ]
 my %includes;
 
-# Who includes us?
+# Who includes us?  child => { parent => count }
 my %included;
 
-
+# Who has double includes?  [ (parent, child, count) ]
+my @doubles;
 
 
 
@@ -104,8 +105,8 @@ sub gather
 
 	for my $x (@incs)
 	  {
-		$included{$x} ||= [];
-		push @{$included{$x}}, $file;
+		$included{$x} ||= {};
+		$included{$x}->{$file}++;
 	  }
 }
 
@@ -138,10 +139,12 @@ sub report_double
 	header "Double Inclusion";
 	for my $x (keys %included)
 	  {
-		my %u;
-		map { $u{$_}++ } @{$included{$x}};
-		map { print "!!   DOUBLE-INC: $_ includes $x $u{$_} times\n" if $u{$_} > 1 } keys %u;
-		$included{$x} = [keys %u];
+		for my $y (keys %{$included{$x}})
+		  {
+			my $n = $included{$x}->{$y};
+			next unless $n > 1;
+			print "!!   DOUBLE-INC: $y includes $x $n times\n";
+		  }
 	  }
 }
 
