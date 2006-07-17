@@ -209,6 +209,8 @@ sub repl
 		print $OUT $res, "\n" unless $@;
 		$term->addhistory($_) if /\S/;
 	  }
+
+	print "\n\n";
 }
 
 repl;
