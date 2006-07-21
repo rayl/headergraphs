@@ -15,7 +15,7 @@ qq () {
 }
 
 spiderweb () {
-	DOT=neato Q $1 2 0
+	DOT=neato Q $1 -1 0
 }
 
 w () {
