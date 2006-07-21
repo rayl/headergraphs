@@ -11,5 +11,5 @@ q () {
 }
 
 w () {
-	./header.pl transitive
+	./header.pl transitive | less
 }
