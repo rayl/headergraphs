@@ -289,18 +289,48 @@ sub graph_file_in
 	  }
 }
 
+sub graph_node
+{
+	my ($map, $node) = @_;
+	return if $map->{$node};
+	my $n = $count{$node} || 0;
+	print "\t\"$node\" [label=\"$node\\n($n)\"]\n";
+	$map->{$node} = 1;
+}
+
+sub graph_edge
+{
+	my ($e, $f) = @_;
+	my $w = $count{$f} || 0;
+	my $l;
+
+	if     ($w <  10) { $l = 3.0; }
+	elsif  ($w <  30) { $l = 2.0; }
+	elsif  ($w < 100) { $l = 1.0; }
+	elsif  ($w < 150) { $l = 0.5; }
+	else              { $l = 0.1; }
+
+	print "\t\"$e\" -> \"$f\" [len=$l];\n";
+}
+
 sub graph_file
 {
 	my ($file, $out, $in) = @_;
 	my %e1;
+	my %n;
 	print "digraph \"$file\" {\n";
+	print "\toverlap=false;\n";
+	print "\tsplines=true;\n";
 	graph_file_out($file, $out, \%e1);
 	graph_file_in($file, $in, \%e1);
 	for my $e (sort keys %e1)
 	  {
-		my $n = $count{$e} || 0;
-		print "\t\"$e\" [label=\"$e\\n($n)\"]\n";
-		print "\t\"$e\" -> \"$_\";\n" for keys %{$e1{$e}};
+		graph_node(\%n, $e);
+		for my $f (sort {($count{$a}||0) <=> ($count{$b}||0)} keys %{$e1{$e}})
+		  {
+			graph_node(\%n, $f);
+			graph_edge($e, $f);
+		  }
 	  }
 	print "};\n";
 }
