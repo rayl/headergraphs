@@ -283,7 +283,7 @@ sub graph_file
 	for my $e (sort keys %e1)
 	  {
 		my $n = $count{$e} || 0;
-		print "\t\"$e\" [label=\"$e ($n)\"]\n";
+		print "\t\"$e\" [label=\"$e\\n($n)\"]\n";
 		print "\t\"$e\" -> \"$_\";\n" for keys %{$e1{$e}};
 	  }
 	print "};\n";
@@ -317,10 +317,15 @@ sub report
 	report_missingasm;
 }
 
-if (scalar(@ARGV) == 1) {
+my $cmd = shift @ARGV;
+
+if ($cmd eq "repl") {
+	repl;
+
+} elsif ($cmd eq "transitive") {
 	print "$count{$_}\t$_\n" for reverse sort {$count{$a} <=> $count{$b}} keys %count;
 
-} elsif (scalar(@ARGV) == 3) {
+} elsif ($cmd eq "graph") {
 	graph_file @ARGV;
 
 } else {

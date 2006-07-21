@@ -2,7 +2,7 @@ export GIT_AUTHOR_EMAIL=rayl@mail.com
 export GIT_COMMITTER_EMAIL=rayl@mail.com
 
 Q () {
-	./header.pl $* | dot -Tps > foo.ps
+	./header.pl graph $* | dot -Tps > foo.ps
 	kghostview foo.ps
 }
 
@@ -11,6 +11,5 @@ q () {
 }
 
 w () {
-	./header.pl | grep ^[0-9]| sort -rn | less
+	./header.pl transitive
 }
-
