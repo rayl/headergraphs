@@ -160,13 +160,9 @@ sub report_nonexistent
 	  {
 		for my $f (@{$includes{$x}})
 		  {
-			#$i =~ m,^.(.*).$,;
-			#my $f = $1;
-	
 			next if -f $f;
 			next if $f eq "stdarg.h";
 			next if $f =~ m,^asm/,;
-
 			print "!! NON-EXISTENT: $x includes $f\n";
 		  }
 	  }
@@ -180,13 +176,9 @@ sub report_missingasm
 	  {
 		for my $f (@{$includes{$x}})
 		  {
-			#$i =~ m,^.(.*).$,;
-			#my $f = $1;
-	
 			next if -f $f;
 			next if $f eq "stdarg.h";
 			next unless $f =~ m,^asm/,;
-	
 			print "!!  MISSING-ASM: $x includes $f\n";
 		  }
 	  }
