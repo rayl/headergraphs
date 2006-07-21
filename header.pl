@@ -289,12 +289,32 @@ sub graph_file_in
 	  }
 }
 
+sub node_color
+{
+	my ($w) = @_;
+	if     ($w <  10) { undef }
+	elsif  ($w <  30) { "#ffd0d0" }
+	elsif  ($w < 100) { "#ff8080" }
+	elsif  ($w < 150) { "#ff4040" }
+	else              { "#ff0000" }
+}
+
 sub graph_node
 {
-	my ($map, $node) = @_;
+	my ($map, $root, $node) = @_;
 	return if $map->{$node};
 	my $n = $count{$node} || 0;
-	print "\t\"$node\" [label=\"$node\\n($n)\"]\n";
+	print "\t\"$node\" [label=\"$node\\n($n)\"";
+	if ($root eq $node)
+	  {
+		print ", shape=house, color=\"#0000ff\", fillcolor=\"#ffff00\", style=filled";
+	  }
+	else
+	  {
+		my $c = node_color($n);
+		print ", fillcolor=\"$c\", style=filled" if defined $c;
+	  }
+	print "]\n";
 	$map->{$node} = 1;
 }
 
@@ -304,8 +324,8 @@ sub graph_edge
 	my $w = $count{$f} || 0;
 	my $l;
 
-	if     ($w <  10) { $l = 3.0; }
-	elsif  ($w <  30) { $l = 2.0; }
+	if     ($w <  10) { $l = 5.0; }
+	elsif  ($w <  30) { $l = 3.0; }
 	elsif  ($w < 100) { $l = 1.0; }
 	elsif  ($w < 150) { $l = 0.5; }
 	else              { $l = 0.1; }
@@ -321,14 +341,15 @@ sub graph_file
 	print "digraph \"$file\" {\n";
 	print "\toverlap=false;\n";
 	print "\tsplines=true;\n";
+	print "\troot=\"$file\";\n";
 	graph_file_out($file, $out, \%e1);
 	graph_file_in($file, $in, \%e1);
 	for my $e (sort keys %e1)
 	  {
-		graph_node(\%n, $e);
-		for my $f (sort {($count{$a}||0) <=> ($count{$b}||0)} keys %{$e1{$e}})
+		graph_node(\%n, $file, $e);
+		for my $f (sort {($count{$b}||0) <=> ($count{$a}||0)} keys %{$e1{$e}})
 		  {
-			graph_node(\%n, $f);
+			graph_node(\%n, $file, $f);
 			graph_edge($e, $f);
 		  }
 	  }
