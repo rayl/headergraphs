@@ -301,9 +301,10 @@ sub node_color
 
 sub graph_node
 {
-	my ($map, $root, $node) = @_;
+	my ($map, $root, $node, $minout) = @_;
 	return if $map->{$node};
 	my $n = $count{$node} || 0;
+	return if $n < $minout;
 	print "\t\"$node\" [label=\"$node\\n($n)\"";
 	if ($root eq $node)
 	  {
@@ -320,9 +321,13 @@ sub graph_node
 
 sub graph_edge
 {
-	my ($e, $f) = @_;
+	my ($e, $f, $minout) = @_;
+	my $w0 = $count{$e} || 0;
 	my $w = $count{$f} || 0;
 	my $l;
+
+	return if $w0 < $minout;
+	return if $w < $minout;
 
 	if     ($w <  10) { $l = 5.0; }
 	elsif  ($w <  30) { $l = 3.0; }
@@ -335,9 +340,10 @@ sub graph_edge
 
 sub graph_file
 {
-	my ($file, $out, $in) = @_;
+	my ($file, $out, $in, $minout) = @_;
 	my %e1;
 	my %n;
+	$minout ||= 0;
 	print "digraph \"$file\" {\n";
 	print "\toverlap=false;\n";
 	print "\tsplines=true;\n";
@@ -346,11 +352,11 @@ sub graph_file
 	graph_file_in($file, $in, \%e1);
 	for my $e (sort keys %e1)
 	  {
-		graph_node(\%n, $file, $e);
+		graph_node(\%n, $file, $e, $minout);
 		for my $f (sort {($count{$b}||0) <=> ($count{$a}||0)} keys %{$e1{$e}})
 		  {
-			graph_node(\%n, $file, $f);
-			graph_edge($e, $f);
+			graph_node(\%n, $file, $f, $minout);
+			graph_edge($e, $f, $minout);
 		  }
 	  }
 	print "};\n";
