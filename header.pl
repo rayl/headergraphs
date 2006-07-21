@@ -30,6 +30,9 @@ my %included;
 # Who has double includes?  [ (parent, child, count) ]
 my @doubles;
 
+# how many files in our transitive inclusion tree? parent => count
+my %count;
+
 
 
 
@@ -105,8 +108,16 @@ sub gather
 	map {s/.$//} @incs;
 
 	$includes{$file} = \@incs;
+}
 
-	for my $x (@incs)
+#
+# Construct part of %included for the given file
+#
+sub find_included
+{
+	my ($file) = @_;
+
+	for my $x (@{$includes{$file}})
 	  {
 		$included{$x} ||= {};
 		$included{$x}->{$file}++;
@@ -115,19 +126,47 @@ sub gather
 
 
 #
-# Work at the top of the kernel include tree
+# Find the size of the inclusion tree rooted at a file
 #
-chdir "$tree/include" || die "Bad tree: $tree";
+sub transitive_1
+{
+	my ($f, $e) = @_;
+	$e->{$f} ||= {};
+	for my $x (@{$includes{$f}})
+	  {
+		unless ($e->{$f}->{$x})
+		  {
+			$e->{$f}->{$x} = 1;
+			transitive_1($x, $e);
+		  }
+	  }
+}
+
+sub transitive
+{
+	my ($file) = @_;
+	my %e1;
+	transitive_1($file, \%e1);
+	my %e2 = map {$_=>1} keys %e1;
+	for my $k1 (keys %e1)
+	  {
+		map {$e2{$_} => 1} keys %{$e1{$k1}};
+	  }
+	delete $e2{$file};
+	$count{$file} = scalar(keys %e2);
+}
 
 
-#
-# Gather the include lines from all files of interest.
-#
-map {gather $_} map {interesting_files $_} interesting_dirs;
+sub do_it
+{
+	chdir "$tree/include" || die "Bad tree: $tree";
+	map {gather $_} map {interesting_files $_} interesting_dirs;
+	map {find_included $_} keys %includes;
+	map {transitive $_} keys %includes;
+}
 
 
-
-
+do_it;
 
 
 
@@ -212,7 +251,6 @@ sub graph_file_out
 {
 	my ($file, $n, $edges) = @_;
 	return if $n == 0;
-	#return if $edges->{$file};
 	$edges->{$file} ||= {};
 	for my $e (@{$includes{$file}})
 	  {
@@ -244,10 +282,13 @@ sub graph_file
 	graph_file_in($file, $in, \%e1);
 	for my $e (sort keys %e1)
 	  {
+		my $n = $count{$e} || 0;
+		print "\t\"$e\" [label=\"$e ($n)\"]\n";
 		print "\t\"$e\" -> \"$_\";\n" for keys %{$e1{$e}};
 	  }
 	print "};\n";
 }
+
 
 
 sub repl
@@ -269,9 +310,20 @@ sub repl
 	print "\n\n";
 }
 
-#report_double;
-#report_nonexistent;
-#report_missingasm;
-#repl;
-graph_file @ARGV;
+sub report
+{
+	report_double;
+	report_nonexistent;
+	report_missingasm;
+}
+
+if (scalar(@ARGV) == 1) {
+	print "$count{$_}\t$_\n" for reverse sort {$count{$a} <=> $count{$b}} keys %count;
+
+} elsif (scalar(@ARGV) == 3) {
+	graph_file @ARGV;
+
+} else {
+	repl;
+}
 
