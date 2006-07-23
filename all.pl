@@ -433,7 +433,7 @@ sub graph
 			graph_edge($e, $f, $minout);
 		  }
 	  }
-	print "};\n";
+	print "}\n";
 	select $stdout;
 	$o;
 }
