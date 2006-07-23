@@ -4,7 +4,7 @@ use 5.6.0;
 use strict;
 use warnings;
 use Benchmark;
-
+use Data::Dumper;
 
 # the location of the linux kernel tree
 my $tree = "/home/rayl/proj/linux";
@@ -28,9 +28,6 @@ my %includes;
 
 # Who includes us?  child => { parent => count }
 my %included;
-
-# Who has double includes?  [ (parent, child, count) ]
-my @doubles;
 
 # how many files in our transitive inclusion tree? parent => count
 my %count;
@@ -236,12 +233,9 @@ sub do_it
 	map {transitive $_} keys %includes;
 	$t1 = new Benchmark;
 	print "Took " . timestr(timediff($t1, $t0)) . " seconds\n";
-	$t0 = $t1;
+
+	undef;
 }
-
-
-do_it;
-
 
 
 sub header
@@ -412,7 +406,7 @@ sub graph_edge
 	print "\t\"$e\" -> \"$f\" [len=$l];\n";
 }
 
-sub graph_file
+sub graph
 {
 	my ($file, $out, $in, $minout) = @_;
 	my %e1;
@@ -436,6 +430,62 @@ sub graph_file
 	print "};\n";
 }
 
+sub report
+{
+	report_double;
+	report_nonexistent;
+	report_missingasm;
+}
+
+sub trans
+{
+	print "$count{$_}\t$_\n" for reverse sort {$count{$a} <=> $count{$b}} keys %count;
+}
+
+sub save_it
+{
+	unless (open D, ">DUMP.bin")
+	  {
+		print "Failed to open DUMP.bin\n";
+		return;
+	  }
+
+	print D Data::Dumper->Dump([\%includes, \%included, \%count], [qw(a b c)]);
+
+	close D;
+}
+
+sub load_it
+{
+	my ($a, $b, $c);
+
+	unless (open D, "<DUMP.bin")
+	  {
+		print "Failed to open DUMP.bin\n";
+		return;
+	  }
+
+	my $data = join '', <D>;
+ 	eval $data;
+
+	%includes = %$a;
+	%included = %$b;
+	%count = %$c;
+
+	close D;
+}
+
+sub help
+{
+	print <<EOF;
+  do_it
+  load
+  dump
+  graph file,out,in
+  report
+  trans
+EOF
+}
 
 
 sub repl
@@ -443,7 +493,7 @@ sub repl
 	use Term::ReadLine;
 
 	my $term = new Term::ReadLine; # ’Simple Perl calc’;
-	my $prompt = "Enter a command: ";
+	my $prompt = "Enter a command (type 'help' for list): ";
 	my $OUT = $term->OUT || \*STDOUT;
 
 	while (defined ($_ = $term->readline($prompt)))
@@ -457,25 +507,5 @@ sub repl
 	print "\n\n";
 }
 
-sub report
-{
-	report_double;
-	report_nonexistent;
-	report_missingasm;
-}
-
-my $cmd = shift @ARGV;
-
-if ($cmd eq "repl") {
-	repl;
-
-} elsif ($cmd eq "transitive") {
-	print "$count{$_}\t$_\n" for reverse sort {$count{$a} <=> $count{$b}} keys %count;
-
-} elsif ($cmd eq "graph") {
-	graph_file @ARGV;
-
-} else {
-	repl;
-}
+repl;
 
