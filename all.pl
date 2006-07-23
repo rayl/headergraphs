@@ -5,6 +5,7 @@ use strict;
 use warnings;
 use Benchmark;
 use Data::Dumper;
+use Cwd;
 
 # the location of the linux kernel tree
 my $tree = "/home/rayl/proj/linux";
@@ -207,6 +208,7 @@ sub transitive
 sub do_it
 {
 	my ($t0, $t1);
+	my ($cwd) = cwd();
 
 	print "process hdrs\n";
 	$t0 = new Benchmark;
@@ -234,7 +236,8 @@ sub do_it
 	$t1 = new Benchmark;
 	print "Took " . timestr(timediff($t1, $t0)) . " seconds\n";
 
-	undef;
+	chdir $cwd;
+	"";
 }
 
 
@@ -411,6 +414,11 @@ sub graph
 	my ($file, $out, $in, $minout) = @_;
 	my %e1;
 	my %n;
+	my $o = $file;
+	$o =~ s/[.\/]/_/g;
+	$o =~ s/$/.dot/g;
+	open O, ">$o" || return;
+	my $stdout = select O;
 	$minout ||= 0;
 	print "digraph \"$file\" {\n";
 	print "\toverlap=false;\n";
@@ -428,6 +436,8 @@ sub graph
 		  }
 	  }
 	print "};\n";
+	select $stdout;
+	$o;
 }
 
 sub report
@@ -475,6 +485,18 @@ sub load_it
 	close D;
 }
 
+sub show
+{
+	my $dot = graph @_;
+	my $ps = $dot;
+	$ps =~ s/\.dot$/.ps/;
+	print "Running dot...\n";
+	system "dot", "-Tps", "-o", $ps, $dot;
+	print "Displaying graph...\n";
+	system "kghostview", $ps;
+	0;
+}
+
 sub help
 {
 	print <<EOF;
@@ -482,6 +504,7 @@ sub help
   load
   dump
   graph file,out,in
+  show file,out,in
   report
   trans
 EOF
