@@ -134,6 +134,16 @@ sub interesting_src_files
 }
 
 #
+# convert asm/mach paths to the chosen target
+#
+sub convert_asm
+{
+	$_[0] =~ s,^asm/arch/,asm-$arch/mach-$mach/,;
+	$_[0] =~ s,^asm/,asm-$arch/,;
+}
+
+
+#
 # Extract include lines from a file
 #
 sub gather
@@ -154,6 +164,9 @@ sub gather
 	# trim the <> or "" characters
 	map {s/^.//} @incs;
 	map {s/.$//} @incs;
+
+	# convert asm lines
+	map {convert_asm $_} @incs;
 
 	# return the list of included file names
 	$includes{$file} = \@incs;
@@ -413,6 +426,7 @@ sub graph_edge
 sub graph
 {
 	my ($file, $out, $in, $minout) = @_;
+	convert_asm $file;
 	my %e1;
 	my %n;
 	my $o = $file;
