@@ -71,6 +71,7 @@ sub we_want_hdr_file
 	return 0 if $x =~ m,^asm-.*/asm-offsets.h$,;
 	return 0 if $x =~ m,^linux/autoconf.h$,;
 	return 0 if $x =~ m,^linux/compile.h$,;
+	return 0 if $x =~ m,^linux/compiler.h$,;
 	return 0 if $x =~ m,^linux/version.h$,;
 	return 1;
 }
