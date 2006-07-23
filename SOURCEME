@@ -28,3 +28,17 @@ calc_tree () {
 	w | awk '{print $2, $1}' | sort > t2
 	join t1 t2 | awk '$2 != $3 {print $2-$3, $2, $3, $1}' | sort -k 1rn -k 2rn | less
 }
+
+# cluster circular inclusion sets
+# circ <dotfile>
+circ () {
+	sccmap $1 \
+	| gvpr 'BEG_G {graph_t x = graph(name,""); x.style = "filled"; x.color="green";}
+		N     {copy(x,$);}
+		END_G {if (x.name != "scc_map") $O = x;}' \
+	| sed -e 's/digraph/subgraph/' \
+	> x.dot
+	cat $1 | sed -e '1rx.dot' | dot -Tps -o foo.ps 
+	kghostview foo.ps
+}
+
