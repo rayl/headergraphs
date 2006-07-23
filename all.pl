@@ -44,10 +44,8 @@ sub we_want_hdr_dir
 	my ($x) = @_;
 	return 0 if       $x =~ m,^config(/.*)?$,;
 	return 1 if       $x =~ m,^asm-generic$,;
-	return 1 unless   $x =~ m,^asm-,;
-	return 0 unless   $x =~ m,^asm-$arch(/.*)?$,;
-	return 1 unless   $x =~ m,^asm-$arch/(arch|mach)-,;
-	return 0 unless   $x =~ m,^asm-$arch/(arch|mach)-$mach(/.*)?$,;
+	return 0 if       $x =~ m,^asm-,;
+	return 0 if       $x =~ m,^asm/(mach|arch)-,;
 	return 1;
 }
 
@@ -56,7 +54,7 @@ sub we_want_hdr_dir
 #
 sub interesting_hdr_dirs
 {
-	my @d = `find . -type d`;
+	my @d = `find . -type d -o -type l`;
 	map {s/^..//} @d;
 	chomp @d;
 	sort grep {we_want_hdr_dir $_} @d;
@@ -68,7 +66,7 @@ sub interesting_hdr_dirs
 sub we_want_hdr_file
 {
 	my ($x) = @_;
-	return 0 if $x =~ m,^asm-.*/asm-offsets.h$,;
+	return 0 if $x =~ m,^asm.*/asm-offsets.h$,;
 	return 0 if $x =~ m,^linux/autoconf.h$,;
 	return 0 if $x =~ m,^linux/compile.h$,;
 	return 0 if $x =~ m,^linux/compiler.h$,;
@@ -99,8 +97,6 @@ sub we_want_src_dir
 	return 0 if       $x =~ m,^usr/,;
 	return 1 unless   $x =~ m,^arch/,;
 	return 0 unless   $x =~ m,^arch/$arch(/.*)?$,;
-	return 1 unless   $x =~ m,^arch/$arch/(arch|mach)-,;
-	return 0 unless   $x =~ m,^arch/$arch/(arch|mach)-$mach(/.*)?$,;
 	return 1;
 }
 
@@ -134,16 +130,6 @@ sub interesting_src_files
 }
 
 #
-# convert asm/mach paths to the chosen target
-#
-sub convert_asm
-{
-	$_[0] =~ s,^asm/arch/,asm-$arch/mach-$mach/,;
-	$_[0] =~ s,^asm/,asm-$arch/,;
-}
-
-
-#
 # Extract include lines from a file
 #
 sub gather
@@ -164,9 +150,6 @@ sub gather
 	# trim the <> or "" characters
 	map {s/^.//} @incs;
 	map {s/.$//} @incs;
-
-	# convert asm lines
-	map {convert_asm $_} @incs;
 
 	# return the list of included file names
 	$includes{$file} = \@incs;
@@ -426,7 +409,6 @@ sub graph_edge
 sub graph
 {
 	my ($file, $out, $in, $minout) = @_;
-	convert_asm $file;
 	my %e1;
 	my %n;
 	my $o = $file;
