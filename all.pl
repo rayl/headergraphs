@@ -416,7 +416,8 @@ sub graph
 	my %n;
 	my $o = $file;
 	$o =~ s/[.\/]/_/g;
-	$o =~ s/$/.dot/g;
+	$o =~ s/$/.dot/;
+	$o =~ s/^/tmp\//;
 	open O, ">$o" || return;
 	my $stdout = select O;
 	$minout ||= 0;
