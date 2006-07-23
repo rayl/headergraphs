@@ -38,7 +38,8 @@ circ () {
 		END_G {if (x.name != "scc_map") $O = x;}' \
 	| sed -e 's/digraph/subgraph/' \
 	> x.dot
-	cat $1 | sed -e '1rx.dot' | dot -Tps -o foo.ps 
+	cat $1 | sed -e '1rx.dot' > y.dot
+	dot -Tps -o foo.ps y.dot
 	kghostview foo.ps
 }
 

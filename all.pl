@@ -445,9 +445,20 @@ sub report
 	report_missingasm;
 }
 
+sub trans_data
+{
+	reverse sort {$count{$a} <=> $count{$b}} keys %count;
+}
+
+sub trans_print
+{
+	shift @_;
+	print "$count{$_}\t$_\n";
+}
+
 sub trans
 {
-	print "$count{$_}\t$_\n" for reverse sort {$count{$a} <=> $count{$b}} keys %count;
+	&trans_print for &trans_data;
 }
 
 sub save_it
