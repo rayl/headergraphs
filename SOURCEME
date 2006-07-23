@@ -21,3 +21,10 @@ spiderweb () {
 w () {
 	./header.pl transitive | less
 }
+
+# figure out the differences in inclusion tree sizes
+calc_tree () {
+	w | awk '{print $2, $1}' | sort > t1
+	w | awk '{print $2, $1}' | sort > t2
+	join t1 t2 | awk '$2 != $3 {print $2-$3, $2, $3, $1}' | sort -k 1rn -k 2rn | less
+}
