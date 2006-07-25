@@ -148,24 +148,36 @@ sub bfs
 	($count, \%order);
 }
 
+sub _dfs
+{
+	my ($z, $node, $pre, $post, $count) = @_;
+
+	print "$node\n";
+
+	$count->[0]++;
+	$pre->{$node} = $count->[1]++;
+	for $node ($z->children($node))
+	  {
+		unless (defined $pre->{$node})
+		  {
+			$z->_dfs($node, $pre, $post, $count);
+		  }
+	  }
+	$post->{$node} = $count->[2]++;
+}
+
 sub dfs
 {
-	my ($z, $root, $pre, $in, $post) = @_;
+	my ($z, $node) = @_;
+	my %pre;
+	my %post;
+	my @count = (0, 0, 0);
 
-	return "<BADROOT>" unless my $r = $z->has_node($root);
+	$z->_dfs($node, \%pre, \%post, \@count);
 
-	my %saw = {};
-
-	my @stk = ();
-	unshift @stk, $r;
-
-	while ($stk[0])
-	  {
-		my $x = $stk[0];
-		$pre->($z, $x);
-		
-	  }
+	($count[0], \%pre, \%post);
 }
+
 
 package Graph::Node;
 
@@ -378,7 +390,24 @@ show $g->degree("linux/posix_types.h");
 show $g->degree_in("linux/posix_types.h");
 show $g->degree_out("linux/posix_types.h");
 
-$g->bfs("linux/types.h");
+my ($count, $order) = $g->bfs("linux/types.h");
+show $count;
+for (sort {$order->{$a} <=> $order->{$b}} keys %{$order})
+  {
+	print "   $_ => $order->{$_}\n";
+  }
+
+my ($count, $pre, $post) = $g->dfs("linux/types.h");
+show $count;
+for (sort {$pre->{$a} <=> $pre->{$b}} keys %{$pre})
+  {
+	print "   $_ => $pre->{$_}\n";
+  }
+for (sort {$post->{$a} <=> $post->{$b}} keys %{$post})
+  {
+	print "   $_ => $post->{$_}\n";
+  }
+
 
 sub repl
 {
