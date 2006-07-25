@@ -1,11 +1,150 @@
-#!/usr/bin/perl
+#!/opt/perl/bin/perl
 
 use 5.6.0;
 use strict;
 use warnings;
+
+
+package Graph;
+
+# model include network as digraph using adjacency lists
+#     order = count(*.c *.h)
+#     size  = count(#include lines)
+
+# keep a forward graph (includes) and a reverse (included)
+
+# other node data
+#     inclusion tree size (order of graph rooted at node)
+
+sub new
+{
+	my ($type) = @_;
+	my $z = bless {}, ref $type || $type;
+	$z->{'V'} = {};
+	$z->{'E'} = {};
+	$z->{'R'} = {};
+	$z;
+}
+
+sub node
+{
+	my ($z, $name) = @_;
+	$z->{'V'}->{$name} ||= Graph::Node->new;
+}
+
+sub edge
+{
+	my ($z, $tail, $head) = @_;
+
+	# make sure the nodes exist
+	$z->node($tail);
+	$z->node($head);
+
+	# do the reverse edge
+	$z->{'R'}->{$head} ||= {};
+	$z->{'R'}->{$head}->{$tail} ||= Graph::Edge->new;
+
+	# do the forward edge
+	$z->{'E'}->{$tail} ||= {};
+	$z->{'E'}->{$tail}->{$head} ||= Graph::Edge->new;
+}
+
+sub has_node
+{
+	my ($z, $node) = @_;
+	$z->{'V'}->{$node};
+}
+
+sub has_edge
+{
+	my ($z, $tail, $head) = @_;
+	if (my $x = $z->{'E'}->{$tail})
+	  {
+		$x->{$head};
+	  }
+}
+
+sub order
+{
+	my ($z) = @_;
+	scalar keys %{$z->{'V'}};
+}
+
+sub size
+{
+	my ($z) = @_;
+	my $e = $z->{'E'};
+	my $c;
+	map {$c += scalar keys %{$e->{$_}}} keys %{$e};
+	$c;
+}
+
+sub degree_out
+{
+	my ($z, $node) = @_;
+	return 0 unless my $x = $z->{'E'}->{$node};
+	scalar keys %{$x};
+}
+
+sub degree_in
+{
+	my ($z, $node) = @_;
+	return 0 unless my $x = $z->{'R'}->{$node};
+	scalar keys %{$x};
+}
+
+sub degree
+{
+	my ($z, $node) = @_;
+	$z->degree_out($node) + $z->degree_in($node);
+}
+
+sub dfs
+{
+	my ($z, $root, $pre, $in, $post) = @_;
+
+	return "<BADROOT>" unless my $r = $z->has_node($root);
+
+	my %saw = {};
+
+	my @stk = ();
+	unshift @stk, $r;
+
+	while ($stk[0])
+	  {
+		my $x = $stk[0];
+		$pre->($z, $x);
+		
+	  }
+}
+
+package Graph::Node;
+
+sub new
+{
+	my ($type) = @_;
+	my $z = bless {}, ref $type || $type;
+	$z;
+}
+
+package Graph::Edge;
+
+sub new
+{
+	my ($type) = @_;
+	my $z = bless {}, ref $type || $type;
+	$z;
+}
+
+
+package main;
+
 use Benchmark;
 use Data::Dumper;
 use Cwd;
+
+sub show { my $x = shift || "<UNDEF>"; print "$x\n" }
+
 
 # the location of the linux kernel tree
 my $tree = "/home/rayl/proj/linux";
@@ -21,26 +160,8 @@ my ($arch, $mach) =
 	("x86_64",  "");
 
 
-
-# model include network as digraph using adjacency lists
-#     order = count(*.c *.h)
-#     size  = count(#include lines)
-
-# keep a forward graph (includes) and a reverse (included)
-
-# other node data
-#     inclusion tree size (order of graph rooted at node)
-
-
-# Who do we include? parent => [ child ]
-my %includes;
-
-# Who includes us?  child => { parent => count }
-my %included;
-
-# how many files in our transitive inclusion tree? parent => count
-my %count;
-
+# the forward (includes) digraph
+my $g = Graph->new;
 
 
 
@@ -144,6 +265,13 @@ sub gather
 {
 	my ($file) = @_;
 
+	# bail if we've already parsed this file for some reason
+	my $n = $g->node($file);
+	return if $n->{'parsed'};
+
+	# remember that we've parsed this file
+	$n->{'parsed'} = 1;
+
 	# read the raw #include lines
 	open F, "<$file" || die "Can't read $file!";
 	my @incs = grep {s,^\s*#\s*include\s*(["<][^>"]*[">]).*,$1,} <F>;
@@ -159,9 +287,52 @@ sub gather
 	map {s/^.//} @incs;
 	map {s/.$//} @incs;
 
-	# return the list of included file names
-	$includes{$file} = \@incs;
+	# create edges for each inclusion
+	for my $h (@incs)
+	  {
+		$g->edge($file, $h);
+	  }
 }
+
+
+sub do_it
+{
+	my ($t0, $t1);
+
+	$t0 = new Benchmark;
+
+	print "process hdrs\n";
+	chdir "$tree/include" || die "Bad tree: $tree";
+	map {gather $_} map {interesting_hdr_files $_} interesting_hdr_dirs;
+	$t1 = new Benchmark;
+	print "Took " . timestr(timediff($t1, $t0)) . " seconds\n";
+	$t0 = $t1;
+
+	if (0)
+	  {
+		print "process src\n";
+		chdir "$tree" || die "Bad tree: $tree";
+		map {gather $_} map {interesting_src_files $_} interesting_src_dirs;
+		$t1 = new Benchmark;
+		print "Took " . timestr(timediff($t1, $t0)) . " seconds\n";
+		$t0 = $t1;
+	  }
+}
+
+
+do_it;
+
+show $g->order;
+show $g->size;
+
+show $g->degree("linux/posix_types.h");
+show $g->degree_in("linux/posix_types.h");
+show $g->degree_out("linux/posix_types.h");
+
+
+__END__
+
+
 
 #
 # Construct part of %included for the given file
