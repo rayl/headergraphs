@@ -26,6 +26,12 @@ sub new
 	$z;
 }
 
+sub nodes
+{
+	my ($z) = @_;
+	sort keys %{$z->{'V'}};
+}
+
 sub node
 {
 	my ($z, $name) = @_;
@@ -82,21 +88,64 @@ sub size
 sub degree_out
 {
 	my ($z, $node) = @_;
-	return 0 unless my $x = $z->{'E'}->{$node};
-	scalar keys %{$x};
+	scalar keys %{$z->{'E'}->{$node} || {}};
 }
 
 sub degree_in
 {
 	my ($z, $node) = @_;
-	return 0 unless my $x = $z->{'R'}->{$node};
-	scalar keys %{$x};
+	scalar keys %{$z->{'R'}->{$node} || {}};
 }
 
 sub degree
 {
 	my ($z, $node) = @_;
 	$z->degree_out($node) + $z->degree_in($node);
+}
+
+sub children
+{
+	my ($z, $node) = @_;
+	keys %{$z->{'E'}->{$node} || {}};
+}
+
+sub parents
+{
+	my ($z, $node) = @_;
+	keys %{$z->{'R'}->{$node} || {}};
+}
+
+sub adjacent
+{
+	my ($z, $node) = @_;
+	$z->parents($node), $z->children($node);
+}
+
+
+sub bfs
+{
+	my ($z, $node) = @_;
+	my %order;
+	my @queue;
+	my $count = 0;
+
+	$order{$node} = $count++;
+	push @queue, $node;
+
+	while ($node = shift @queue)
+	  {
+		print "$node\n";
+		for $node ($z->children($node))
+		  {
+			unless (defined $order{$node})
+			  {
+				$order{$node} = $count++;
+				push @queue, $node;
+			  }
+		  }
+	  }
+
+	($count, \%order);
 }
 
 sub dfs
@@ -329,6 +378,28 @@ show $g->degree("linux/posix_types.h");
 show $g->degree_in("linux/posix_types.h");
 show $g->degree_out("linux/posix_types.h");
 
+$g->bfs("linux/types.h");
+
+sub repl
+{
+	use Term::ReadLine;
+
+	my $term = new Term::ReadLine; # ’Simple Perl calc’;
+	my $prompt = "Enter a command (type 'help' for list): ";
+	my $OUT = $term->OUT || \*STDOUT;
+
+	while (defined ($_ = $term->readline($prompt)))
+	  {
+		my $res = eval($_);
+		warn $@ if $@;
+		print $OUT $res, "\n" unless $@;
+		$term->addhistory($_) if /\S/;
+	  }
+
+	print "\n\n";
+}
+
+repl;
 
 __END__
 
@@ -698,25 +769,6 @@ sub help
 EOF
 }
 
-
-sub repl
-{
-	use Term::ReadLine;
-
-	my $term = new Term::ReadLine; # ’Simple Perl calc’;
-	my $prompt = "Enter a command (type 'help' for list): ";
-	my $OUT = $term->OUT || \*STDOUT;
-
-	while (defined ($_ = $term->readline($prompt)))
-	  {
-		my $res = eval($_);
-		warn $@ if $@;
-		print $OUT $res, "\n" unless $@;
-		$term->addhistory($_) if /\S/;
-	  }
-
-	print "\n\n";
-}
 
 repl;
 
