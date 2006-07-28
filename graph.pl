@@ -198,16 +198,16 @@ sub tsize
 
 sub _tmany
 {
-	my ($z, $node, $map) = @_;
+	my ($z, $node, $map, $count) = @_;
 	$map->{$node}++;
-	map {$z->_tmany($_, $map)} $z->children($node) unless $map->{$node} > 1;
-	[ grep {$map->{$_} > 4} keys %$map ];
+	map {$z->_tmany($_, $map, $count)} $z->children($node) unless $map->{$node} > 1;
+	[ grep {$map->{$_} > $count} keys %$map ];
 }
 
 sub tmany
 {
-	my ($z, $node) = @_;
-	$z->{'X'}->{$node} ||= $z->_tmany($node, {});
+	my ($z, $node, $count) = @_;
+	$z->{'X'}->{$node} ||= $z->_tmany($node, {}, $count);
 }
 
 package Graph::Node;
@@ -530,9 +530,17 @@ sub graph_node
 		print "\t\"$node\" [label=\"<$m times>\\n$node\\n($n)\", shape=octagon, color=\"#ff0000\"";
 		print ", fillcolor=\"$c\", style=filled" if defined $c;
 		print "];\n";
-		for my $ee (1..$m)
+		for my $ee (0..$m)
 		  {
-			print "\t\"$node/$ee\" [label=\"$node\\n($n)\", fontcolor=\"#c0c0c0\", color=\"#c0c0c0\", style=dashed];\n";
+			print "\t\"$node/$ee\" [label=\"<$m>\\n$node\\n($n)\", style=dashed";
+			if (defined $c)
+			  {
+				print ", fontcolor=\"$c\", color=\"$c\"];\n";
+			  }
+			else
+			  {
+				print ", fontcolor=\"#c0c0c0\", color=\"#c0c0c0\"];\n";
+			  }
 		  }
 	  }
 	else
@@ -568,8 +576,8 @@ sub graph_edge
 
 sub graph
 {
-	my ($file, $out, $in) = @_;
-	my %many = map {$_ => 0} @{$g->tmany($file)};
+	my ($file, $out, $in, $count) = @_;
+	my %many = map {$_ => 0} @{$g->tmany($file, $count)};
 	my %e1;
 	my %n;
 	my $o = $file;
