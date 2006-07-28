@@ -507,8 +507,8 @@ sub graph_file_in
 sub node_color
 {
 	my ($w) = @_;
-	if     ($w <  10) { undef }
-	elsif  ($w <  30) { "#ffd0d0" }
+	if     ($w <  25) { undef }
+	elsif  ($w <  50) { "#ffd0d0" }
 	elsif  ($w < 100) { "#ff8080" }
 	elsif  ($w < 150) { "#ff4040" }
 	else              { "#ff0000" }
@@ -524,7 +524,7 @@ sub graph_node
 	  {
 		print "\t\"$node\" [label=\"$node\\n($n)\", shape=house, color=\"#0000ff\", fillcolor=\"#ffff00\", style=filled];\n";
 	  }
-	elsif (exists $many->{$node})
+	elsif (exists $many->{$node} && not defined $c)
 	  {
 		my $m = $many->{$node}-1;
 		print "\t\"$node\" [label=\"<$m times>\\n$node\\n($n)\", shape=octagon, color=\"#ff0000\"";
@@ -556,6 +556,7 @@ sub graph_edge
 {
 	my ($e, $f, $many) = @_;
 	my $w = $g->tsize($f);
+	my $c = node_color($w);
 	my $l;
 
 	if     ($w <  10) { $l = 5.0; }
@@ -564,7 +565,7 @@ sub graph_edge
 	elsif  ($w < 150) { $l = 0.5; }
 	else              { $l = 0.1; }
 
-	if (exists $many->{$f})
+	if (exists $many->{$f} && not defined $c)
 	  {
 		print "\t\"$e\" -> \"$f/" . $many->{$f}++ . "\" [len=$l];\n";
 	  }
