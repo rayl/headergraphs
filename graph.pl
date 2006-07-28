@@ -524,11 +524,18 @@ sub graph_node
 	  {
 		print "\t\"$node\" [label=\"$node\\n($n)\", shape=house, color=\"#0000ff\", fillcolor=\"#ffff00\", style=filled];\n";
 	  }
-	elsif (exists $many->{$node} && not defined $c)
+	elsif (exists $many->{$node} && ((not defined $c) || ($many->{$node} > 4)))
 	  {
 		my $m = $many->{$node}-1;
-		print "\t\"$node\" [label=\"<$m times>\\n$node\\n($n)\", shape=octagon, color=\"#ff0000\"";
-		print ", fillcolor=\"$c\", style=filled" if defined $c;
+		print "\t\"$node\" [label=\"<$m times>\\n$node\\n($n)\"";
+		if (defined $c)
+		  {
+			print ", shape=octagon, fillcolor=\"$c\", style=filled";
+		  }
+		else
+		  {
+			print ", shape=diamond, style=bold";
+		  }
 		print "];\n";
 		for my $ee (0..$m)
 		  {
@@ -554,7 +561,7 @@ sub graph_node
 
 sub graph_edge
 {
-	my ($e, $f, $many) = @_;
+	my ($e, $f, $many, $m2) = @_;
 	my $w = $g->tsize($f);
 	my $c = node_color($w);
 	my $l;
@@ -565,9 +572,9 @@ sub graph_edge
 	elsif  ($w < 150) { $l = 0.5; }
 	else              { $l = 0.1; }
 
-	if (exists $many->{$f} && not defined $c)
+	if (exists $many->{$f} && ((not defined $c) || ($many->{$f} > 4)))
 	  {
-		print "\t\"$e\" -> \"$f/" . $many->{$f}++ . "\" [len=$l];\n";
+		print "\t\"$e\" -> \"$f/" . $m2->{$f}++ . "\" [len=$l];\n";
 	  }
 	else
 	  {
@@ -575,10 +582,17 @@ sub graph_edge
 	  }
 }
 
+sub graph_many
+{
+	my ($f, $many) = @_;
+	$many->{$f}++ if exists $many->{$f};
+}
+
 sub graph
 {
 	my ($file, $out, $in, $count) = @_;
 	my %many = map {$_ => 0} @{$g->tmany($file, $count)};
+	my %m2;
 	my %e1;
 	my %n;
 	my $o = $file;
@@ -597,7 +611,14 @@ sub graph
 	  {
 		for my $f (keys %{$e1{$e}})
 		  {
-			graph_edge($e, $f, \%many);
+			graph_many($f, \%many);
+		  }
+	  }
+	for my $e (sort keys %e1)
+	  {
+		for my $f (keys %{$e1{$e}})
+		  {
+			graph_edge($e, $f, \%many, \%m2);
 		  }
 	  }
 	for my $e (sort keys %e1)
