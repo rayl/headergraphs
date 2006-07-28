@@ -442,6 +442,33 @@ sub repl
 	print "\n\n";
 }
 
+sub header
+{
+	print "\n\n==========================\n  $_[0]\n==========================\n";
+}
+
+sub report_includes
+{
+	header "Includes";
+	for my $x ($g->nodes)
+	  {
+		print "$x:\n";
+		print "\t$_\n" for $g->children($x);
+	  }
+}
+
+sub report_included
+{
+	header "Included by";
+	for my $x ($g->nodes)
+	  {
+		print "$x:\n";
+		print "\t$_\n" for $g->parents($x);
+	  }
+}
+
+
+
 load_it;
 repl;
 
@@ -468,80 +495,6 @@ for my $n (keys %{$post})
 
 print "}\n";
 
-sub header
-{
-	print "\n\n==========================\n  $_[0]\n==========================\n";
-}
-
-#----------------------------------------------------------
-sub report_double
-{
-	header "Double Inclusion";
-	for my $x (keys %included)
-	  {
-		for my $y (keys %{$included{$x}})
-		  {
-			my $n = $included{$x}->{$y};
-			next unless $n > 1;
-			print "!!   DOUBLE-INC: $y includes $x $n times\n";
-		  }
-	  }
-}
-
-
-#----------------------------------------------------------
-sub report_nonexistent
-{
-	header "Non-existent Files";
-	for my $x (keys %includes)
-	  {
-		for my $f (@{$includes{$x}})
-		  {
-			next if -f $f;
-			next if $f eq "stdarg.h";
-			next if $f =~ m,^asm/,;
-			print "!! NON-EXISTENT: $x includes $f\n";
-		  }
-	  }
-}
-
-#----------------------------------------------------------
-sub report_missingasm
-{
-	header "Missing ASM Files";
-	for my $x (keys %includes)
-	  {
-		for my $f (@{$includes{$x}})
-		  {
-			next if -f $f;
-			next if $f eq "stdarg.h";
-			next unless $f =~ m,^asm/,;
-			print "!!  MISSING-ASM: $x includes $f\n";
-		  }
-	  }
-}
-
-#----------------------------------------------------------
-sub report_includes
-{
-	header "Includes";
-	for my $x (sort keys %includes)
-	  {
-		print "$x:\n";
-		print "\t$_\n" for @{$includes{$x}};
-	  }
-}
-
-#----------------------------------------------------------
-sub report_included
-{
-	header "Included by";
-	for my $x (sort keys %included)
-	  {
-		print "$x:\n";
-		print "\t$_\n" for @{$included{$x}};
-	  }
-}
 
 #----------------------------------------------------------
 sub report_layering
