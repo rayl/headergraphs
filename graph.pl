@@ -453,21 +453,6 @@ print "}\n";
 
 
 #
-# Construct part of %included for the given file
-#
-sub find_included
-{
-	my ($file) = @_;
-
-	for my $x (@{$includes{$file}})
-	  {
-		$included{$x} ||= {};
-		$included{$x}->{$file}++;
-	  }
-}
-
-
-#
 # Find the size of the inclusion tree rooted at a file
 #
 sub transitive_1
@@ -501,30 +486,6 @@ sub transitive
 
 sub do_it
 {
-	my ($t0, $t1);
-	my ($cwd) = cwd();
-
-	print "process hdrs\n";
-	$t0 = new Benchmark;
-	chdir "$tree/include" || die "Bad tree: $tree";
-	map {gather $_} map {interesting_hdr_files $_} interesting_hdr_dirs;
-	$t1 = new Benchmark;
-	print "Took " . timestr(timediff($t1, $t0)) . " seconds\n";
-	$t0 = $t1;
-
-	print "process src\n";
-	chdir "$tree" || die "Bad tree: $tree";
-	map {gather $_} map {interesting_src_files $_} interesting_src_dirs;
-	$t1 = new Benchmark;
-	print "Took " . timestr(timediff($t1, $t0)) . " seconds\n";
-	$t0 = $t1;
-
-	print "find included\n";
-	map {find_included $_} keys %includes;
-	$t1 = new Benchmark;
-	print "Took " . timestr(timediff($t1, $t0)) . " seconds\n";
-	$t0 = $t1;
-
 	print "transitive\n";
 	map {transitive $_} keys %includes;
 	$t1 = new Benchmark;
