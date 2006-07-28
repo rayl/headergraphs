@@ -208,7 +208,7 @@ sub show { my $x = shift || "<UNDEF>"; print "$x\n" }
 
 
 # the location of the linux kernel tree
-my $tree = "/home/rayl/proj/linux";
+my $tree = "/home/rayl/proj/linux-headers";
 
 
 # the specific asm-* directories of interest.
@@ -380,35 +380,6 @@ sub do_it
 	  }
 }
 
-
-do_it;
-
-show $g->order;
-show $g->size;
-
-show $g->degree("linux/posix_types.h");
-show $g->degree_in("linux/posix_types.h");
-show $g->degree_out("linux/posix_types.h");
-
-my ($count, $order) = $g->bfs("linux/types.h");
-show $count;
-for (sort {$order->{$a} <=> $order->{$b}} keys %{$order})
-  {
-	print "   $_ => $order->{$_}\n";
-  }
-
-my ($count, $pre, $post) = $g->dfs("linux/types.h");
-show $count;
-for (sort {$pre->{$a} <=> $pre->{$b}} keys %{$pre})
-  {
-	print "   $_ => $pre->{$_}\n";
-  }
-for (sort {$post->{$a} <=> $post->{$b}} keys %{$post})
-  {
-	print "   $_ => $post->{$_}\n";
-  }
-
-
 sub repl
 {
 	use Term::ReadLine;
@@ -427,6 +398,28 @@ sub repl
 
 	print "\n\n";
 }
+
+do_it;
+
+my $file = "linux/spinlock.h";
+
+my ($count, $pre, $post) = $g->dfs($file);
+
+print "digraph \"$file\" {\n";
+print "\toverlap=false;\n";
+print "\tsplines=true;\n";
+print "\troot=\"$file\";\n";
+
+for my $n (keys %{$post})
+  {
+	print "\t\"$n\";\n";
+	for my $c ($g->children($n))
+	  {
+		print "\t\"$n\" -> \"$c\";\n";
+	  }
+  }
+
+print "}\n";
 
 repl;
 
