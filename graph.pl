@@ -516,33 +516,39 @@ sub node_color
 
 sub graph_node
 {
-	my ($map, $root, $node, $minout) = @_;
+	my ($map, $root, $node, $many) = @_;
 	return if $map->{$node};
 	my $n = $g->tsize($node);
-	return if $n < $minout;
-	print "\t\"$node\" [label=\"$node\\n($n)\"";
+	my $c = node_color($n);
 	if ($root eq $node)
 	  {
-		print ", shape=house, color=\"#0000ff\", fillcolor=\"#ffff00\", style=filled";
+		print "\t\"$node\" [label=\"$node\\n($n)\", shape=house, color=\"#0000ff\", fillcolor=\"#ffff00\", style=filled];\n";
+	  }
+	elsif (exists $many->{$node})
+	  {
+		my $m = $many->{$node}-1;
+		print "\t\"$node\" [label=\"<$m times>\\n$node\\n($n)\", shape=octagon, color=\"#ff0000\"";
+		print ", fillcolor=\"$c\", style=filled" if defined $c;
+		print "];\n";
+		for my $ee (1..$m)
+		  {
+			print "\t\"$node/$ee\" [label=\"$node\\n($n)\", fontcolor=\"#c0c0c0\", color=\"#c0c0c0\", style=dashed];\n";
+		  }
 	  }
 	else
 	  {
-		my $c = node_color($n);
+		print "\t\"$node\" [label=\"$node\\n($n)\"";
 		print ", fillcolor=\"$c\", style=filled" if defined $c;
+		print "];\n";
 	  }
-	print "]\n";
 	$map->{$node} = 1;
 }
 
 sub graph_edge
 {
-	my ($e, $f, $minout) = @_;
-	my $w0 = $g->tsize($e);
+	my ($e, $f, $many) = @_;
 	my $w = $g->tsize($f);
 	my $l;
-
-	return if $w0 < $minout;
-	return if $w < $minout;
 
 	if     ($w <  10) { $l = 5.0; }
 	elsif  ($w <  30) { $l = 3.0; }
@@ -550,12 +556,20 @@ sub graph_edge
 	elsif  ($w < 150) { $l = 0.5; }
 	else              { $l = 0.1; }
 
-	print "\t\"$e\" -> \"$f\" [len=$l];\n";
+	if (exists $many->{$f})
+	  {
+		print "\t\"$e\" -> \"$f/" . $many->{$f}++ . "\" [len=$l];\n";
+	  }
+	else
+	  {
+		print "\t\"$e\" -> \"$f\" [len=$l];\n";
+	  }
 }
 
 sub graph
 {
-	my ($file, $out, $in, $minout) = @_;
+	my ($file, $out, $in) = @_;
+	my %many = map {$_ => 0} @{$g->tmany($file)};
 	my %e1;
 	my %n;
 	my $o = $file;
@@ -564,7 +578,6 @@ sub graph
 	$o =~ s/^/tmp\//;
 	open O, ">$o" || return;
 	my $stdout = select O;
-	$minout ||= 0;
 	print "digraph \"$file\" {\n";
 	print "\toverlap=false;\n";
 	print "\tsplines=true;\n";
@@ -573,11 +586,17 @@ sub graph
 	graph_file_in($file, $in, \%e1);
 	for my $e (sort keys %e1)
 	  {
-		graph_node(\%n, $file, $e, $minout);
+		for my $f (keys %{$e1{$e}})
+		  {
+			graph_edge($e, $f, \%many);
+		  }
+	  }
+	for my $e (sort keys %e1)
+	  {
+		graph_node(\%n, $file, $e, \%many);
 		for my $f (sort {$g->tsize($b) <=> $g->tsize($a)} keys %{$e1{$e}})
 		  {
-			graph_node(\%n, $file, $f, $minout);
-			graph_edge($e, $f, $minout);
+			graph_node(\%n, $file, $f, \%many);
 		  }
 	  }
 	print "}\n";
