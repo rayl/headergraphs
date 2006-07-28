@@ -8,7 +8,7 @@ use Data::Dumper;
 use Cwd;
 
 # the location of the linux kernel tree
-my $tree = "/home/rayl/proj/linux";
+my $tree = "/home/rayl/proj/linux-headers";
 
 
 # the specific asm-* directories of interest.
