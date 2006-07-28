@@ -221,9 +221,6 @@ use Benchmark;
 use Data::Dumper;
 use Cwd;
 
-sub show { my $x = shift || "<UNDEF>"; print "$x\n" }
-
-
 # the location of the linux kernel tree
 my $tree = "/home/rayl/proj/linux-headers";
 
@@ -467,41 +464,12 @@ sub report_included
 	  }
 }
 
-
-
-load_it;
-repl;
-
-__END__
-
-
-my $file = "linux/spinlock.h";
-
-my ($count, $pre, $post) = $g->dfs($file);
-
-print "digraph \"$file\" {\n";
-print "\toverlap=false;\n";
-print "\tsplines=true;\n";
-print "\troot=\"$file\";\n";
-
-for my $n (keys %{$post})
-  {
-	print "\t\"$n\";\n";
-	for my $c ($g->children($n))
-	  {
-		print "\t\"$n\" -> \"$c\";\n";
-	  }
-  }
-
-print "}\n";
-
-
 sub graph_file_out
 {
 	my ($file, $n, $edges) = @_;
 	return if $n == 0;
 	$edges->{$file} ||= {};
-	for my $e (@{$includes{$file}})
+	for my $e ($g->children($file))
 	  {
 		next if $edges->{$file}->{$e};
 		$edges->{$file}->{$e} = 1;
@@ -513,7 +481,7 @@ sub graph_file_in
 {
 	my ($file, $n, $edges) = @_;
 	return if $n == 0;
-	for my $e (keys %{$included{$file}})
+	for my $e ($g->parents($file))
 	  {
 		$edges->{$e} ||= {};
 		next if $edges->{$e}->{$file};
@@ -536,7 +504,7 @@ sub graph_node
 {
 	my ($map, $root, $node, $minout) = @_;
 	return if $map->{$node};
-	my $n = $count{$node} || 0;
+	my $n = $g->tsize($node);
 	return if $n < $minout;
 	print "\t\"$node\" [label=\"$node\\n($n)\"";
 	if ($root eq $node)
@@ -555,8 +523,8 @@ sub graph_node
 sub graph_edge
 {
 	my ($e, $f, $minout) = @_;
-	my $w0 = $count{$e} || 0;
-	my $w = $count{$f} || 0;
+	my $w0 = $g->tsize($e);
+	my $w = $g->tsize($f);
 	my $l;
 
 	return if $w0 < $minout;
@@ -592,7 +560,7 @@ sub graph
 	for my $e (sort keys %e1)
 	  {
 		graph_node(\%n, $file, $e, $minout);
-		for my $f (sort {($count{$b}||0) <=> ($count{$a}||0)} keys %{$e1{$e}})
+		for my $f (sort {$g->tsize($b) <=> $g->tsize($a)} keys %{$e1{$e}})
 		  {
 			graph_node(\%n, $file, $f, $minout);
 			graph_edge($e, $f, $minout);
@@ -601,13 +569,6 @@ sub graph
 	print "}\n";
 	select $stdout;
 	$o;
-}
-
-sub report
-{
-	report_double;
-	report_nonexistent;
-	report_missingasm;
 }
 
 sub show
@@ -636,5 +597,7 @@ EOF
 }
 
 
+
+load_it;
 repl;
 
