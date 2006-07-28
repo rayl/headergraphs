@@ -359,6 +359,7 @@ sub gather
 sub do_it
 {
 	my ($t0, $t1);
+	my $c = cwd();
 
 	$t0 = new Benchmark;
 
@@ -369,15 +370,40 @@ sub do_it
 	print "Took " . timestr(timediff($t1, $t0)) . " seconds\n";
 	$t0 = $t1;
 
-	if (0)
+	print "process src\n";
+	chdir "$tree" || die "Bad tree: $tree";
+	map {gather $_} map {interesting_src_files $_} interesting_src_dirs;
+	$t1 = new Benchmark;
+	print "Took " . timestr(timediff($t1, $t0)) . " seconds\n";
+	$t0 = $t1;
+
+	chdir $c;
+}
+
+sub save_it
+{
+	unless (open D, ">DUMP.bin")
 	  {
-		print "process src\n";
-		chdir "$tree" || die "Bad tree: $tree";
-		map {gather $_} map {interesting_src_files $_} interesting_src_dirs;
-		$t1 = new Benchmark;
-		print "Took " . timestr(timediff($t1, $t0)) . " seconds\n";
-		$t0 = $t1;
+		print "Failed to open DUMP.bin\n";
+		return;
 	  }
+
+	print D Data::Dumper->Dump([$g], [qw(g)]);
+
+	close D;
+}
+
+sub load_it
+{
+	unless (open D, "<DUMP.bin")
+	  {
+		print "Failed to open DUMP.bin\n";
+		return;
+	  }
+
+	my $data = join '', <D>;
+ 	eval $data;
+	close D;
 }
 
 sub repl
@@ -399,7 +425,10 @@ sub repl
 	print "\n\n";
 }
 
-do_it;
+repl;
+
+__END__
+
 
 my $file = "linux/spinlock.h";
 
@@ -420,10 +449,6 @@ for my $n (keys %{$post})
   }
 
 print "}\n";
-
-repl;
-
-__END__
 
 
 
@@ -731,39 +756,6 @@ sub trans_print
 sub trans
 {
 	&trans_print for &trans_data;
-}
-
-sub save_it
-{
-	unless (open D, ">DUMP.bin")
-	  {
-		print "Failed to open DUMP.bin\n";
-		return;
-	  }
-
-	print D Data::Dumper->Dump([\%includes, \%included, \%count], [qw(a b c)]);
-
-	close D;
-}
-
-sub load_it
-{
-	my ($a, $b, $c);
-
-	unless (open D, "<DUMP.bin")
-	  {
-		print "Failed to open DUMP.bin\n";
-		return;
-	  }
-
-	my $data = join '', <D>;
- 	eval $data;
-
-	%includes = %$a;
-	%included = %$b;
-	%count = %$c;
-
-	close D;
 }
 
 sub show
