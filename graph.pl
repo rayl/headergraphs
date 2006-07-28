@@ -24,6 +24,7 @@ sub new
 	$z->{'E'} = {};
 	$z->{'R'} = {};
 	$z->{'T'} = {};
+	$z->{'X'} = {};
 	$z;
 }
 
@@ -195,6 +196,19 @@ sub tsize
 	$z->{'T'}->{$node} ||= $z->_tsize($node, {});
 }
 
+sub _tmany
+{
+	my ($z, $node, $map) = @_;
+	$map->{$node}++;
+	map {$z->_tmany($_, $map)} $z->children($node) unless $map->{$node} > 1;
+	[ grep {$map->{$_} > 4} keys %$map ];
+}
+
+sub tmany
+{
+	my ($z, $node) = @_;
+	$z->{'X'}->{$node} ||= $z->_tmany($node, {});
+}
 
 package Graph::Node;
 
