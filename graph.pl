@@ -496,24 +496,6 @@ for my $n (keys %{$post})
 print "}\n";
 
 
-#----------------------------------------------------------
-sub report_layering
-{
-	header "Possible layering violations";
-	my @d_asm = qw(acpi config keys math-emu media mtd net pcmcia rdma rxrpc scsi sound video);
-	my $x = join '|', @d_asm;
-	for my $p (sort grep {m/^asm/} keys %includes)
-	  {
-		for my $c (@{$includes{$p}})
-		  {
-			next unless $c =~ m/^($x)\//;
-			print "\t$p includes $c\n";
-		  }
-	  }
-}
-
-#----------------------------------------------------------
-
 sub graph_file_out
 {
 	my ($file, $n, $edges) = @_;
