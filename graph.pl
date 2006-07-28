@@ -23,6 +23,7 @@ sub new
 	$z->{'V'} = {};
 	$z->{'E'} = {};
 	$z->{'R'} = {};
+	$z->{'T'} = {};
 	$z;
 }
 
@@ -176,6 +177,22 @@ sub dfs
 	$z->_dfs($node, \%pre, \%post, \@count);
 
 	($count[0], \%pre, \%post);
+}
+
+sub _tsize
+{
+	my ($z, $node, $map) = @_;
+	return 0 if defined $map->{$node};
+	my $t = 1;
+	$map->{$node} = 0;
+	map {$t += $z->_tsize($_, $map)} $z->children($node);
+	$map->{$node} = $t;
+}
+
+sub tsize
+{
+	my ($z, $node) = @_;
+	$z->{'T'}->{$node} ||= $z->_tsize($node, {});
 }
 
 
@@ -425,6 +442,7 @@ sub repl
 	print "\n\n";
 }
 
+load_it;
 repl;
 
 __END__
@@ -449,52 +467,6 @@ for my $n (keys %{$post})
   }
 
 print "}\n";
-
-
-
-#
-# Find the size of the inclusion tree rooted at a file
-#
-sub transitive_1
-{
-	my ($f, $e) = @_;
-	$e->{$f} ||= {};
-	for my $x (@{$includes{$f}})
-	  {
-		unless ($e->{$f}->{$x})
-		  {
-			$e->{$f}->{$x} = 1;
-			transitive_1($x, $e);
-		  }
-	  }
-}
-
-sub transitive
-{
-	my ($file) = @_;
-	my %e1;
-	transitive_1($file, \%e1);
-	my %e2 = map {$_=>1} keys %e1;
-	for my $k1 (keys %e1)
-	  {
-		map {$e2{$_} => 1} keys %{$e1{$k1}};
-	  }
-	delete $e2{$file};
-	$count{$file} = scalar(keys %e2);
-}
-
-
-sub do_it
-{
-	print "transitive\n";
-	map {transitive $_} keys %includes;
-	$t1 = new Benchmark;
-	print "Took " . timestr(timediff($t1, $t0)) . " seconds\n";
-
-	chdir $cwd;
-	"";
-}
-
 
 sub header
 {
@@ -701,22 +673,6 @@ sub report
 	report_double;
 	report_nonexistent;
 	report_missingasm;
-}
-
-sub trans_data
-{
-	reverse sort {$count{$a} <=> $count{$b}} keys %count;
-}
-
-sub trans_print
-{
-	shift @_;
-	print "$count{$_}\t$_\n";
-}
-
-sub trans
-{
-	&trans_print for &trans_data;
 }
 
 sub show
