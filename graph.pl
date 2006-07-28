@@ -508,33 +508,53 @@ sub node_color
 {
 	my ($w) = @_;
 	if     ($w <  25) { undef }
-	elsif  ($w <  50) { "#ffd0d0" }
-	elsif  ($w < 100) { "#ff8080" }
-	elsif  ($w < 150) { "#ff4040" }
-	else              { "#ff0000" }
+	elsif  ($w <  50) { "d0" }
+	elsif  ($w < 100) { "80" }
+	elsif  ($w < 150) { "40" }
+	else              { "00" }
+}
+
+sub octo_color
+{
+	my ($c) = @_;
+	"#ff${c}${c}";
+}
+
+sub blue_color
+{
+	my ($c) = @_;
+	"#${c}${c}ff";
 }
 
 sub graph_node
 {
 	my ($map, $root, $node, $many) = @_;
+
 	return if $map->{$node};
+	$map->{$node} = 1;
+
 	my $n = $g->tsize($node);
 	my $c = node_color($n);
+	my $o = octo_color($c) if defined $c;
+	my $b = blue_color($c) if defined $c;
+
 	if ($root eq $node)
 	  {
 		print "\t\"$node\" [label=\"$node\\n($n)\", shape=house, color=\"#0000ff\", fillcolor=\"#ffff00\", style=filled];\n";
 	  }
 	elsif (exists $many->{$node} && ((not defined $c) || ($many->{$node} > 4)))
 	  {
+		return unless $g->children($node);
+
 		my $m = $many->{$node}-1;
 		print "\t\"$node\" [label=\"<$m times>\\n$node\\n($n)\"";
 		if (defined $c)
 		  {
-			print ", shape=octagon, fillcolor=\"$c\", style=filled";
+			print ", shape=octagon, fillcolor=\"$o\", style=filled";
 		  }
 		else
 		  {
-			print ", shape=diamond, style=bold";
+			print ", shape=diamond, fillcolor=\"#ffff80\", style=filled";
 		  }
 		print "];\n";
 		for my $ee (0..$m)
@@ -542,7 +562,7 @@ sub graph_node
 			print "\t\"$node/$ee\" [label=\"<$m>\\n$node\\n($n)\", style=dashed";
 			if (defined $c)
 			  {
-				print ", fontcolor=\"$c\", color=\"$c\"];\n";
+				print ", shape=octagon, fontcolor=\"$o\", color=\"$o\"];\n";
 			  }
 			else
 			  {
@@ -553,10 +573,9 @@ sub graph_node
 	else
 	  {
 		print "\t\"$node\" [label=\"$node\\n($n)\"";
-		print ", fillcolor=\"$c\", style=filled" if defined $c;
+		print ", fillcolor=\"$b\", style=filled" if defined $c;
 		print "];\n";
 	  }
-	$map->{$node} = 1;
 }
 
 sub graph_edge
