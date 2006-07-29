@@ -396,6 +396,8 @@ sub do_it
 	my ($t0, $t1);
 	my $c = cwd();
 
+	$g = Graph->new;
+
 	$t0 = new Benchmark;
 
 	print "process hdrs\n";
