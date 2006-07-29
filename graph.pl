@@ -607,19 +607,13 @@ sub graph_many
 	$many->{$f}++ if exists $many->{$f};
 }
 
-sub graph
+sub graph1
 {
 	my ($file, $out, $in, $count) = @_;
 	my %many = map {$_ => 0} @{$g->tmany($file, $count)};
 	my %m2;
 	my %e1;
 	my %n;
-	my $o = $file;
-	$o =~ s/[.\/]/_/g;
-	$o =~ s/$/.dot/;
-	$o =~ s/^/tmp\//;
-	open O, ">$o" || return;
-	my $stdout = select O;
 	print "digraph \"$file\" {\n";
 	print "\toverlap=false;\n";
 	print "\tsplines=true;\n";
@@ -649,6 +643,17 @@ sub graph
 		  }
 	  }
 	print "}\n";
+}
+
+sub graph
+{
+	my ($o) = @_;
+	$o =~ s/[.\/]/_/g;
+	$o =~ s/$/.dot/;
+	$o =~ s/^/tmp\//;
+	open O, ">$o" || return;
+	my $stdout = select O;
+	graph1(@_);
 	select $stdout;
 	$o;
 }
@@ -681,5 +686,6 @@ EOF
 
 
 load_it;
-repl;
+show("linux/sched.h", -1, 0, 2);
+#repl;
 
