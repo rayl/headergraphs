@@ -566,19 +566,20 @@ sub graph_node
 	  }
 	elsif (snipped($node, $cuts, $c))
 	  {
-		return unless $g->children($node);
-
 		my $m = $cuts->{$node};
-		print "\t\"$node\" [label=\"<$m times>\\n$node\\n($n)\"";
-		if (defined $c)
+		if ($g->children($node))
 		  {
-			print ", shape=octagon, fillcolor=\"$o\", style=filled";
+			print "\t\"$node\" [label=\"<$m times>\\n$node\\n($n)\"";
+			if (defined $c)
+			  {
+				print ", shape=octagon, fillcolor=\"$o\", style=filled";
+			  }
+			else
+			  {
+				print ", shape=diamond, fillcolor=\"#ffff80\", style=filled";
+			  }
+			print "];\n";
 		  }
-		else
-		  {
-			print ", shape=diamond, fillcolor=\"#ffff80\", style=filled";
-		  }
-		print "];\n";
 		for my $ee (1..$m)
 		  {
 			print "\t\"$node/$ee\" [label=\"<$m>\\n$node\\n($n)\", style=dashed";
@@ -716,7 +717,18 @@ sub show
 	system "dot", "-Tps", "-o", $ps, $dot;
 	print "Displaying graph...\n";
 	system "kghostview", $ps;
+	$g->reset;
 	0;
+}
+
+sub x
+{
+	show($_[0], -1, 0, 2);
+}
+
+sub l
+{
+	load_it
 }
 
 sub help
@@ -732,11 +744,5 @@ sub help
 EOF
 }
 
-
-
-load_it;
-show("linux/sched.h", -1, 0, 2);
-$g->reset;
-
-#repl;
+repl;
 
