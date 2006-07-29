@@ -210,6 +210,13 @@ sub tmany
 	$z->{'X'}->{$node} ||= $z->_tmany($node, {}, $count);
 }
 
+sub reset
+{
+	my ($z) = @_;
+	$z->{'T'} = {};
+	$z->{'X'} = {};
+}
+
 package Graph::Node;
 
 sub new
@@ -478,7 +485,7 @@ sub report_included
 	  }
 }
 
-sub graph_file_out
+sub collect_children
 {
 	my ($file, $n, $edges) = @_;
 	return if $n == 0;
@@ -487,11 +494,11 @@ sub graph_file_out
 	  {
 		next if $edges->{$file}->{$e};
 		$edges->{$file}->{$e} = 1;
-		graph_file_out($e, $n-1, $edges);
+		collect_children($e, $n-1, $edges);
 	  }
 }
 
-sub graph_file_in
+sub collect_parents
 {
 	my ($file, $n, $edges) = @_;
 	return if $n == 0;
@@ -500,8 +507,17 @@ sub graph_file_in
 		$edges->{$e} ||= {};
 		next if $edges->{$e}->{$file};
 		$edges->{$e}->{$file} = 1;
-		graph_file_in($e, $n-1, $edges);
+		collect_parents($e, $n-1, $edges);
 	  }
+}
+
+sub extract
+{
+	my ($file, $clevel, $plevel) = @_;
+	my $x = {};
+	collect_children($file, $clevel, $x);
+	collect_parents($file, $plevel, $x);
+	$x;
 }
 
 sub node_color
@@ -528,7 +544,7 @@ sub blue_color
 
 sub graph_node
 {
-	my ($map, $root, $node, $many) = @_;
+	my ($map, $root, $node, $cuts) = @_;
 
 	return if $map->{$node};
 	$map->{$node} = 1;
@@ -542,11 +558,11 @@ sub graph_node
 	  {
 		print "\t\"$node\" [label=\"$node\\n($n)\", shape=house, color=\"#0000ff\", fillcolor=\"#ffff00\", style=filled];\n";
 	  }
-	elsif (exists $many->{$node} && ((not defined $c) || ($many->{$node} > 4)))
+	elsif (exists $cuts->{$node} && ((not defined $c) || ($cuts->{$node} > 4)))
 	  {
 		return unless $g->children($node);
 
-		my $m = $many->{$node}-1;
+		my $m = $cuts->{$node}-1;
 		print "\t\"$node\" [label=\"<$m times>\\n$node\\n($n)\"";
 		if (defined $c)
 		  {
@@ -580,7 +596,7 @@ sub graph_node
 
 sub graph_edge
 {
-	my ($e, $f, $many, $m2) = @_;
+	my ($e, $f, $cuts, $m2) = @_;
 	my $w = $g->tsize($f);
 	my $c = node_color($w);
 	my $l;
@@ -591,7 +607,7 @@ sub graph_edge
 	elsif  ($w < 150) { $l = 0.5; }
 	else              { $l = 0.1; }
 
-	if (exists $many->{$f} && ((not defined $c) || ($many->{$f} > 4)))
+	if (exists $cuts->{$f} && ((not defined $c) || ($cuts->{$f} > 4)))
 	  {
 		print "\t\"$e\" -> \"$f/" . $m2->{$f}++ . "\" [len=$l];\n";
 	  }
@@ -601,48 +617,70 @@ sub graph_edge
 	  }
 }
 
-sub graph_many
+sub snip
 {
-	my ($f, $many) = @_;
-	$many->{$f}++ if exists $many->{$f};
+	my ($file, $count, $mesh) = @_;
+	my %m = map {$_ => 0} @{$g->tmany($file, $count)};
+	map {$m{$_}++ if exists $m{$_}} map {keys %{$mesh->{$_}}} sort keys %$mesh;
+	\%m;
 }
 
-sub graph1
+sub print_ghead
 {
-	my ($file, $out, $in, $count) = @_;
-	my %many = map {$_ => 0} @{$g->tmany($file, $count)};
-	my %m2;
-	my %e1;
-	my %n;
+	my ($file, $mesh, $cuts) = @_;
 	print "digraph \"$file\" {\n";
 	print "\toverlap=false;\n";
 	print "\tsplines=true;\n";
 	print "\troot=\"$file\";\n";
-	graph_file_out($file, $out, \%e1);
-	graph_file_in($file, $in, \%e1);
-	for my $e (sort keys %e1)
+}
+
+sub print_edges
+{
+	my ($file, $mesh, $cuts) = @_;
+	my %m2;
+	for my $e (sort keys %$mesh)
 	  {
-		for my $f (keys %{$e1{$e}})
+		for my $f (keys %{$mesh->{$e}})
 		  {
-			graph_many($f, \%many);
+			graph_edge($e, $f, $cuts, \%m2);
 		  }
 	  }
-	for my $e (sort keys %e1)
+}
+
+sub print_nodes
+{
+	my ($file, $mesh, $cuts) = @_;
+	my %n;
+	for my $e (sort keys %$mesh)
 	  {
-		for my $f (keys %{$e1{$e}})
+		graph_node(\%n, $file, $e, $cuts);
+		for my $f (sort {$g->tsize($b) <=> $g->tsize($a)} keys %{$mesh->{$e}})
 		  {
-			graph_edge($e, $f, \%many, \%m2);
+			graph_node(\%n, $file, $f, $cuts);
 		  }
 	  }
-	for my $e (sort keys %e1)
-	  {
-		graph_node(\%n, $file, $e, \%many);
-		for my $f (sort {$g->tsize($b) <=> $g->tsize($a)} keys %{$e1{$e}})
-		  {
-			graph_node(\%n, $file, $f, \%many);
-		  }
-	  }
+}
+
+sub print_gfoot
+{
+	my ($file, $mesh, $cuts) = @_;
 	print "}\n";
+}
+
+sub graph2
+{
+	print_ghead(@_);
+	print_edges(@_);
+	print_nodes(@_);
+	print_gfoot(@_);
+}
+
+sub graph1
+{
+	my ($file, $clevel, $plevel, $count) = @_;
+	my $mesh = extract($file, $clevel, $plevel);
+	my $cuts = snip($file, $count, $mesh);
+	graph2($file, $mesh, $cuts);
 }
 
 sub graph
@@ -687,5 +725,7 @@ EOF
 
 load_it;
 show("linux/sched.h", -1, 0, 2);
+$g->reset;
+
 #repl;
 
