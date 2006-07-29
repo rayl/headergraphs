@@ -487,37 +487,44 @@ sub report_included
 
 sub collect_children
 {
-	my ($file, $n, $edges) = @_;
+	my ($file, $n, $edges, $total, $visiting) = @_;
 	return if $n == 0;
+	return if $visiting->{$file};
 	$edges->{$file} ||= {};
+	$visiting->{$file} = 1;
+	map {$total->{$_}++} keys %$visiting;
 	for my $e ($g->children($file))
 	  {
-		next if $edges->{$file}->{$e};
-		$edges->{$file}->{$e} = 1;
-		collect_children($e, $n-1, $edges);
+		$edges->{$file}->{$e}++;
+		collect_children($e, $n-1, $edges, $total, $visiting);
 	  }
+	delete $visiting->{$file};
 }
 
 sub collect_parents
 {
-	my ($file, $n, $edges) = @_;
+	my ($file, $n, $edges, $visiting) = @_;
 	return if $n == 0;
+	return if $visiting->{$file};
+	$visiting->{$file} = 1;
 	for my $e ($g->parents($file))
 	  {
 		$edges->{$e} ||= {};
 		next if $edges->{$e}->{$file};
 		$edges->{$e}->{$file} = 1;
-		collect_parents($e, $n-1, $edges);
+		collect_parents($e, $n-1, $edges, $visiting);
 	  }
+	delete $visiting->{$file};
 }
 
 sub extract
 {
 	my ($file, $clevel, $plevel) = @_;
 	my $x = {};
-	collect_children($file, $clevel, $x);
-	collect_parents($file, $plevel, $x);
-	$x;
+	my $t = {};
+	collect_children($file, $clevel, $x, $t, {});
+	collect_parents($file, $plevel, $x, {});
+	($x, $t);
 }
 
 sub node_color
@@ -550,11 +557,12 @@ sub snipped
 
 sub graph_node
 {
-	my ($map, $root, $node, $cuts) = @_;
+	my ($map, $root, $node, $cuts, $total) = @_;
 
 	return if $map->{$node};
 	$map->{$node} = 1;
 
+	my $t = $total->{$node};
 	my $n = $g->tsize($node);
 	my $c = node_color($n);
 	my $o = octo_color($c) if defined $c;
@@ -562,14 +570,14 @@ sub graph_node
 
 	if ($root eq $node)
 	  {
-		print "\t\"$node\" [label=\"$node\\n($n)\", shape=house, color=\"#0000ff\", fillcolor=\"#ffff00\", style=filled];\n";
+		print "\t\"$node\" [label=\"$node\\n($n/$t)\", shape=house, color=\"#0000ff\", fillcolor=\"#ffff00\", style=filled];\n";
 	  }
 	elsif (snipped($node, $cuts, $c))
 	  {
 		my $m = $cuts->{$node};
 		if ($g->children($node))
 		  {
-			print "\t\"$node\" [label=\"<$m times>\\n$node\\n($n)\"";
+			print "\t\"$node\" [label=\"<$m times>\\n$node\\n($n/$t)\"";
 			if (defined $c)
 			  {
 				print ", shape=octagon, fillcolor=\"$o\", style=filled";
@@ -582,7 +590,7 @@ sub graph_node
 		  }
 		for my $ee (1..$m)
 		  {
-			print "\t\"$node/$ee\" [label=\"<$m>\\n$node\\n($n)\", style=dashed";
+			print "\t\"$node/$ee\" [label=\"<$m>\\n$node\\n($n/$t)\", style=dashed";
 			if (defined $c)
 			  {
 				print ", shape=octagon, fontcolor=\"$o\", color=\"$o\"];\n";
@@ -595,7 +603,7 @@ sub graph_node
 	  }
 	else
 	  {
-		print "\t\"$node\" [label=\"$node\\n($n)\"";
+		print "\t\"$node\" [label=\"$node\\n($n/$t)\"";
 		print ", fillcolor=\"$b\", style=filled" if defined $c;
 		print "];\n";
 	  }
@@ -639,7 +647,7 @@ sub snip
 
 sub print_ghead
 {
-	my ($file, $mesh, $cuts) = @_;
+	my ($file, $mesh, $cuts, $total) = @_;
 	print "digraph \"$file\" {\n";
 	print "\toverlap=false;\n";
 	print "\tsplines=true;\n";
@@ -648,7 +656,7 @@ sub print_ghead
 
 sub print_edges
 {
-	my ($file, $mesh, $cuts) = @_;
+	my ($file, $mesh, $cuts, $total) = @_;
 	my %m2;
 	for my $e (sort keys %$mesh)
 	  {
@@ -661,21 +669,21 @@ sub print_edges
 
 sub print_nodes
 {
-	my ($file, $mesh, $cuts) = @_;
+	my ($file, $mesh, $cuts, $total) = @_;
 	my %n;
 	for my $e (sort keys %$mesh)
 	  {
-		graph_node(\%n, $file, $e, $cuts);
+		graph_node(\%n, $file, $e, $cuts, $total);
 		for my $f (sort {$g->tsize($b) <=> $g->tsize($a)} keys %{$mesh->{$e}})
 		  {
-			graph_node(\%n, $file, $f, $cuts);
+			graph_node(\%n, $file, $f, $cuts, $total);
 		  }
 	  }
 }
 
 sub print_gfoot
 {
-	my ($file, $mesh, $cuts) = @_;
+	my ($file, $mesh, $cuts, $total) = @_;
 	print "}\n";
 }
 
@@ -690,9 +698,9 @@ sub graph2
 sub graph1
 {
 	my ($file, $clevel, $plevel, $count) = @_;
-	my $mesh = extract($file, $clevel, $plevel);
+	my ($mesh, $total) = extract($file, $clevel, $plevel);
 	my $cuts = snip($file, $count, $mesh);
-	graph2($file, $mesh, $cuts);
+	graph2($file, $mesh, $cuts, $total);
 }
 
 sub graph
