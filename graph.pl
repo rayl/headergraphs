@@ -542,6 +542,12 @@ sub blue_color
 	"#${c}${c}ff";
 }
 
+sub snipped
+{
+	my ($f, $cuts, $c) = @_;
+	exists $cuts->{$f} && ((not defined $c) || ($cuts->{$f} > 4));
+}
+
 sub graph_node
 {
 	my ($map, $root, $node, $cuts) = @_;
@@ -558,11 +564,11 @@ sub graph_node
 	  {
 		print "\t\"$node\" [label=\"$node\\n($n)\", shape=house, color=\"#0000ff\", fillcolor=\"#ffff00\", style=filled];\n";
 	  }
-	elsif (exists $cuts->{$node} && ((not defined $c) || ($cuts->{$node} > 4)))
+	elsif (snipped($node, $cuts, $c))
 	  {
 		return unless $g->children($node);
 
-		my $m = $cuts->{$node}-1;
+		my $m = $cuts->{$node};
 		print "\t\"$node\" [label=\"<$m times>\\n$node\\n($n)\"";
 		if (defined $c)
 		  {
@@ -573,7 +579,7 @@ sub graph_node
 			print ", shape=diamond, fillcolor=\"#ffff80\", style=filled";
 		  }
 		print "];\n";
-		for my $ee (0..$m)
+		for my $ee (1..$m)
 		  {
 			print "\t\"$node/$ee\" [label=\"<$m>\\n$node\\n($n)\", style=dashed";
 			if (defined $c)
@@ -594,22 +600,27 @@ sub graph_node
 	  }
 }
 
+sub tsize_len
+{
+	my ($w) = @_;
+	if     ($w <  10) { 5.0 }
+	elsif  ($w <  30) { 3.0 }
+	elsif  ($w < 100) { 1.0 }
+	elsif  ($w < 150) { 0.5 }
+	else              { 0.1 }
+}
+
 sub graph_edge
 {
 	my ($e, $f, $cuts, $m2) = @_;
 	my $w = $g->tsize($f);
 	my $c = node_color($w);
-	my $l;
+	my $l = tsize_len($w);
 
-	if     ($w <  10) { $l = 5.0; }
-	elsif  ($w <  30) { $l = 3.0; }
-	elsif  ($w < 100) { $l = 1.0; }
-	elsif  ($w < 150) { $l = 0.5; }
-	else              { $l = 0.1; }
-
-	if (exists $cuts->{$f} && ((not defined $c) || ($cuts->{$f} > 4)))
+	if (snipped($f, $cuts, $c))
 	  {
-		print "\t\"$e\" -> \"$f/" . $m2->{$f}++ . "\" [len=$l];\n";
+		$m2->{$f}++;
+		print "\t\"$e\" -> \"$f/" . $m2->{$f} . "\" [len=$l];\n";
 	  }
 	else
 	  {
