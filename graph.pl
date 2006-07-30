@@ -699,10 +699,64 @@ sub graph2
 
 sub graph1
 {
+	# my ($file, $clevel, $plevel, $count) = @_;
+	graph2(analyse(@_));
+}
+
+sub analyse
+{
 	my ($file, $clevel, $plevel, $count) = @_;
 	my ($mesh, $total) = extract($file, $clevel, $plevel);
 	my $cuts = snip($file, $count, $mesh);
-	graph2($file, $mesh, $cuts, $total);
+	($file, $mesh, $cuts, $total);
+}
+
+my $by_edge_hash;
+
+sub by_total
+{
+	$by_edge_hash->{$a} <=> $by_edge_hash->{$b} ||
+	$a cmp $b;
+}
+
+sub by_unique
+{
+	$g->tsize($a) <=> $g->tsize($b) ||
+	$a cmp $b;
+}
+
+sub report1
+{
+	my ($file, $mesh, $cuts, $total) = @_;
+	$by_edge_hash = $total;
+	for my $e (sort by_total keys %$mesh)
+	  {
+		my $t = $total->{$e} || "?";
+		my $n = $g->tsize($e);
+		print "\t$t\t$e ($n)\n";
+	  }
+}
+
+sub report2
+{
+	my ($file, $mesh, $cuts, $total) = @_;
+	$by_edge_hash = $total;
+	for my $e (sort by_unique keys %$mesh)
+	  {
+		my $t = $total->{$e} || "?";
+		my $n = $g->tsize($e);
+		print "\t$n\t$e ($t)\n";
+	  }
+}
+
+sub reporta
+{
+	report1(analyse(@_));
+}
+
+sub reportb
+{
+	report2(analyse(@_));
 }
 
 sub graph
@@ -754,5 +808,7 @@ sub help
 EOF
 }
 
+load_it;
+reportb "linux/spinlock.h", -1, 0, 2;
 repl;
 
