@@ -23,6 +23,7 @@ sub new
 	$z->{'V'} = {};
 	$z->{'E'} = {};
 	$z->{'R'} = {};
+	$z->{'T'} = {};
 	$z->{'U'} = {};
 	$z->{'X'} = {};
 	$z;
@@ -196,6 +197,28 @@ sub unique_tsize
 	$z->{'U'}->{$node} ||= $z->_unique_tsize($node, {});
 }
 
+sub _total_tsize
+{
+	my ($z, $node, $map, $visit) = @_;
+	$map->{$node} = 0;
+	unless ($visit->{$node})
+	  {
+		print "$node\n";
+		my $t = 1;
+		$visit->{$node} = 1;
+		map {$t += $map->{$_} || $z->_total_tsize($_, $map, $visit)->{$_}} $z->children($node);
+		delete $visit->{$node};
+		$map->{$node} = $t;
+	  }
+	$map;
+}
+
+sub total_tsize
+{
+	my ($z, $node) = @_;
+	$z->{'T'}->{$node} ||= $z->_total_tsize($node, {});
+}
+
 sub _tmany
 {
 	my ($z, $node, $map, $count) = @_;
@@ -213,6 +236,7 @@ sub tmany
 sub reset
 {
 	my ($z) = @_;
+	$z->{'T'} = {};
 	$z->{'U'} = {};
 	$z->{'X'} = {};
 }
