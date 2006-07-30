@@ -180,20 +180,20 @@ sub dfs
 	($count[0], \%pre, \%post);
 }
 
-sub _tsize
+sub _unique_tsize
 {
 	my ($z, $node, $map) = @_;
 	return 0 if defined $map->{$node};
 	my $t = 1;
 	$map->{$node} = 0;
-	map {$t += $z->_tsize($_, $map)} $z->children($node);
+	map {$t += $z->_unique_tsize($_, $map)} $z->children($node);
 	$map->{$node} = $t;
 }
 
-sub tsize
+sub unique_tsize
 {
 	my ($z, $node) = @_;
-	$z->{'T'}->{$node} ||= $z->_tsize($node, {});
+	$z->{'T'}->{$node} ||= $z->_unique_tsize($node, {});
 }
 
 sub _tmany
@@ -565,7 +565,7 @@ sub graph_node
 	$map->{$node} = 1;
 
 	my $t = $total->{$node} || "?";
-	my $n = $g->tsize($node);
+	my $n = $g->unique_tsize($node);
 	my $c = node_color($n);
 	my $o = octo_color($c) if defined $c;
 	my $b = blue_color($c) if defined $c;
@@ -611,7 +611,7 @@ sub graph_node
 	  }
 }
 
-sub tsize_len
+sub unique_tsize_len
 {
 	my ($w) = @_;
 	if     ($w <  10) { 5.0 }
@@ -624,9 +624,9 @@ sub tsize_len
 sub graph_edge
 {
 	my ($e, $f, $cuts, $m2) = @_;
-	my $w = $g->tsize($f);
+	my $w = $g->unique_tsize($f);
 	my $c = node_color($w);
-	my $l = tsize_len($w);
+	my $l = unique_tsize_len($w);
 
 	if (snipped($f, $cuts, $c))
 	  {
@@ -676,7 +676,7 @@ sub print_nodes
 	for my $e (sort keys %$mesh)
 	  {
 		graph_node(\%n, $file, $e, $cuts, $total);
-		for my $f (sort {$g->tsize($b) <=> $g->tsize($a)} keys %{$mesh->{$e}})
+		for my $f (sort {$g->unique_tsize($b) <=> $g->unique_tsize($a)} keys %{$mesh->{$e}})
 		  {
 			graph_node(\%n, $file, $f, $cuts, $total);
 		  }
@@ -721,7 +721,7 @@ sub by_total
 
 sub by_unique
 {
-	$g->tsize($a) <=> $g->tsize($b) ||
+	$g->unique_tsize($a) <=> $g->unique_tsize($b) ||
 	$a cmp $b;
 }
 
@@ -732,7 +732,7 @@ sub report1
 	for my $e (sort by_total keys %$mesh)
 	  {
 		my $t = $total->{$e} || "?";
-		my $n = $g->tsize($e);
+		my $n = $g->unique_tsize($e);
 		print "\t$t\t$e ($n)\n";
 	  }
 }
@@ -744,7 +744,7 @@ sub report2
 	for my $e (sort by_unique keys %$mesh)
 	  {
 		my $t = $total->{$e} || "?";
-		my $n = $g->tsize($e);
+		my $n = $g->unique_tsize($e);
 		print "\t$n\t$e ($t)\n";
 	  }
 }
