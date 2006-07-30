@@ -564,7 +564,7 @@ sub graph_node
 	return if $map->{$node};
 	$map->{$node} = 1;
 
-	my $t = $total->{$node};
+	my $t = $total->{$node} || "?";
 	my $n = $g->tsize($node);
 	my $c = node_color($n);
 	my $o = octo_color($c) if defined $c;
