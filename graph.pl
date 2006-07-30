@@ -23,7 +23,7 @@ sub new
 	$z->{'V'} = {};
 	$z->{'E'} = {};
 	$z->{'R'} = {};
-	$z->{'T'} = {};
+	$z->{'U'} = {};
 	$z->{'X'} = {};
 	$z;
 }
@@ -193,7 +193,7 @@ sub _unique_tsize
 sub unique_tsize
 {
 	my ($z, $node) = @_;
-	$z->{'T'}->{$node} ||= $z->_unique_tsize($node, {});
+	$z->{'U'}->{$node} ||= $z->_unique_tsize($node, {});
 }
 
 sub _tmany
@@ -213,7 +213,7 @@ sub tmany
 sub reset
 {
 	my ($z) = @_;
-	$z->{'T'} = {};
+	$z->{'U'} = {};
 	$z->{'X'} = {};
 }
 
