@@ -65,18 +65,22 @@ sub new
 	$z;
 }
 
+# Return a list of all nodes in the graph.
 sub nodes
 {
 	my ($z) = @_;
 	sort keys %{$z->{'vertex'}};
 }
 
+# Return a given node, creating it if not already present.
 sub node
 {
 	my ($z, $name) = @_;
 	$z->{'vertex'}->{$name} ||= Graph::Node->new;
 }
 
+# Return the edge from tail to head, creating it if not
+# already present.
 sub edge
 {
 	my ($z, $tail, $head) = @_;
@@ -94,12 +98,14 @@ sub edge
 	$z->{'edge'}->{$tail}->{$head} ||= Graph::Edge->new;
 }
 
+# Check to see if a given node exists.
 sub has_node
 {
 	my ($z, $node) = @_;
 	$z->{'vertex'}->{$node};
 }
 
+# Check to see if an edge from tail to head exists.
 sub has_edge
 {
 	my ($z, $tail, $head) = @_;
@@ -109,51 +115,74 @@ sub has_edge
 	  }
 }
 
+# Count the number of nodes in the graph.
 sub order
 {
 	my ($z) = @_;
 	scalar keys %{$z->{'vertex'}};
 }
 
+# Count the number of edges in the graph.
 sub size
 {
 	my ($z) = @_;
+
+	# get a reference to the forward edge table
 	my $e = $z->{'edge'};
+
+	# accumulator for the edge count
 	my $c;
+
+	# for each edge source in the forward edge table, add
+	# the number of edge targets originating at that source
+	# to the accumulator
 	map {$c += scalar keys %{$e->{$_}}} keys %{$e};
+
+	# return the accumulator
 	$c;
 }
 
+# Count the number of edges leaving a node. In other words, the
+# number of #include lines in that file.
 sub degree_out
 {
 	my ($z, $node) = @_;
-	scalar keys %{$z->{'edge'}->{$node} || {}};
+	scalar $z->children;
 }
 
+# Count the number of edges entering a node. In other words, the
+# number of #include lines which reference that file.
 sub degree_in
 {
 	my ($z, $node) = @_;
-	scalar keys %{$z->{'reverse_edge'}->{$node} || {}};
+	scalar $z->parents;
 }
 
+# Count the number of edges entering and leaving a node.
 sub degree
 {
 	my ($z, $node) = @_;
 	$z->degree_out($node) + $z->degree_in($node);
 }
 
+# Return a list of the children of a node. In other words, the
+# files included from the given node.
 sub children
 {
 	my ($z, $node) = @_;
 	keys %{$z->{'edge'}->{$node} || {}};
 }
 
+# Return a list of the parents of a node. In other words, the
+# files which include the given node.
 sub parents
 {
 	my ($z, $node) = @_;
 	keys %{$z->{'reverse_edge'}->{$node} || {}};
 }
 
+# Return a list of nodes which have edges entering or leaving the
+# given node.
 sub adjacent
 {
 	my ($z, $node) = @_;
@@ -161,6 +190,7 @@ sub adjacent
 }
 
 
+# An unused breadth-first search routine.
 sub bfs
 {
 	my ($z, $node) = @_;
@@ -187,6 +217,7 @@ sub bfs
 	($count, \%order);
 }
 
+# An unused depth-first search helper routine
 sub _dfs
 {
 	my ($z, $node, $pre, $post, $count) = @_;
@@ -205,6 +236,7 @@ sub _dfs
 	$post->{$node} = $count->[2]++;
 }
 
+# An unused depth-first search routine
 sub dfs
 {
 	my ($z, $node) = @_;
@@ -217,29 +249,60 @@ sub dfs
 	($count[0], \%pre, \%post);
 }
 
+# Calculate the unique transitive size for a given root node.
 sub _unique_tsize
 {
+	# node is the current node during the traversal. map
+	# holds the _additional_ unique nodes found from each node
+	# when they were current during the traversal.
 	my ($z, $node, $map) = @_;
+
+	# if we've already visited this node during this particular
+	# traversal, then there are no additional unique nodes
+	# to be found from here. return zero.
 	return 0 if defined $map->{$node};
+
+	# an accumulator for the additional unique tsize of the current
+	# node. the current node has not been visited before, so init
+	# the accumulator to one.
 	my $t = 1;
+
+	# we have now counted the current node, so define it in the
+	# map so that the above check will trigger if we come across
+	# this node again
 	$map->{$node} = 0;
+
+	# add up the additional unique tsizes of all our children
 	map {$t += $z->_unique_tsize($_, $map)} $z->children($node);
+
+	# save this total as our additional contribution to the overall
+	# tsize of the root node which started the current traversal. if
+	# we are the root node which triggered this traversal, then this
+	# will be the unique tsize of the inclusion tree rooted at that
+	# node.
 	$map->{$node} = $t;
 }
 
+# Look up (or calculate and cache) the unique tsize for a given root node.
 sub unique_tsize
 {
 	my ($z, $node) = @_;
 	$z->{'unique_tsize'}->{$node} ||= $z->_unique_tsize($node, {});
 }
 
+# Calculate the total transitive size for a given root node.
 sub _total_tsize
 {
+	# node is the current node during the traversal. map
+	# holds the _additional_ unique nodes found from each node
+	# when they were current during the traversal. visit contains
+	# an entry for each active node during the depth-first search,
+	# which lets us detect and prevent infinite recursion.
 	my ($z, $node, $map, $visit) = @_;
+
 	$map->{$node} = 0;
 	unless ($visit->{$node})
 	  {
-		print "$node\n";
 		my $t = 1;
 		$visit->{$node} = 1;
 		map {$t += $map->{$_} || $z->_total_tsize($_, $map, $visit)->{$_}} $z->children($node);
@@ -249,10 +312,11 @@ sub _total_tsize
 	$map;
 }
 
+# Look up (or calculate and cache) the total tsize for a given root node.
 sub total_tsize
 {
 	my ($z, $node) = @_;
-	$z->{'total_tsize'}->{$node} ||= $z->_total_tsize($node, {});
+	$z->{'total_tsize'}->{$node} ||= $z->_total_tsize($node, {}, {});
 }
 
 sub _tmany
