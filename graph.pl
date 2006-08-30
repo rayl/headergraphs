@@ -11,6 +11,7 @@ use Graph;
 use Analysis;
 use Dot;
 use Gather;
+use Report;
 
 # the raw inclusion information
 my $g;
@@ -66,77 +67,14 @@ sub repl
 	print "\n\n";
 }
 
-sub header
-{
-	print "\n\n==========================\n  $_[0]\n==========================\n";
-}
-
-sub report_includes
-{
-	header "Includes";
-	for my $x ($g->nodes)
-	  {
-		print "$x:\n";
-		print "\t$_\n" for $g->children($x);
-	  }
-}
-
-sub report_included
-{
-	header "Included by";
-	for my $x ($g->nodes)
-	  {
-		print "$x:\n";
-		print "\t$_\n" for $g->parents($x);
-	  }
-}
-
-my $by_edge_hash;
-
-sub by_total
-{
-	$by_edge_hash->{$a} <=> $by_edge_hash->{$b} ||
-	$a cmp $b;
-}
-
-sub by_unique
-{
-	$g->unique_tsize($a) <=> $g->unique_tsize($b) ||
-	$a cmp $b;
-}
-
-sub report1
-{
-	my ($file, $mesh, $cuts, $total) = @_;
-	$by_edge_hash = $total;
-	for my $e (sort by_total keys %$mesh)
-	  {
-		my $t = $total->{$e} || "?";
-		my $n = $g->unique_tsize($e);
-		print "\t$t\t$e ($n)\n";
-	  }
-}
-
-sub report2
-{
-	my ($file, $mesh, $cuts, $total) = @_;
-	$by_edge_hash = $total;
-	for my $e (sort by_unique keys %$mesh)
-	  {
-		my $t = $total->{$e} || "?";
-		my $n = $g->unique_tsize($e);
-		print "\t$n\t$e ($t)\n";
-	  }
-}
-
 sub reporta
 {
-	report1(Analysis::analyse($g, @_));
+	Report::report1($g, Analysis::analyse($g, @_));
 }
 
 sub reportb
 {
-	report2(Analysis::analyse($g, @_));
+	Report::report2($g, Analysis::analyse($g, @_));
 }
 
 sub graph1
