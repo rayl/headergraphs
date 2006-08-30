@@ -13,29 +13,32 @@ use Cwd;
 use Graph;
 
 
-# the location of the linux kernel tree
-my $tree = "/home/rayl/proj/linux-headers";
+sub new
+{
+	my ($type) = @_;
 
-# the specific asm-* directories of interest.
-# the heuristic used by we_want_hdr_dir() is imperfect, but
-# should be adequate for i386, arm, mips, and cris, at least...
-my ($arch, $mach) = 
-	#("arm",   "ep93xx");
-	#("arm",   "versatile");
-	#("i386",  "generic");
-	("x86_64",  "");
+        # gather objects use a hash representation
+        my $z = bless {}, ref $type || $type;
 
-#
-# The graph we collect into
-#
-my $g;
+	# the location of the linux kernel tree
+	$z->{'tree'} = "/home/rayl/proj/linux-headers";
+
+	# the specific asm-* directories of interest.
+	$z->{'arch'} =
+		# "arm";
+		# "i386";
+		"x86_64";
+
+	$z;
+}
+
 
 #
 # Decide whether we want to process a header directory.
 #
 sub we_want_hdr_dir
 {
-	my ($x) = @_;
+	my ($z, $x) = @_;
 	return 0 if       $x =~ m,^config(/.*)?$,;
 	return 1 if       $x =~ m,^asm-generic$,;
 	return 0 if       $x =~ m,^asm-,;
@@ -48,10 +51,11 @@ sub we_want_hdr_dir
 #
 sub interesting_hdr_dirs
 {
+	my ($z) = @_;
 	my @d = `find . -type d -o -type l`;
 	map {s/^..//} @d;
 	chomp @d;
-	sort grep {we_want_hdr_dir $_} @d;
+	sort grep {$z->we_want_hdr_dir($_)} @d;
 }
 
 #
@@ -59,7 +63,7 @@ sub interesting_hdr_dirs
 #
 sub we_want_hdr_file
 {
-	my ($x) = @_;
+	my ($z, $x) = @_;
 	return 0 if $x =~ m,^asm.*/asm-offsets.h$,;
 	return 0 if $x =~ m,^linux/autoconf.h$,;
 	return 0 if $x =~ m,^linux/compile.h$,;
@@ -73,8 +77,8 @@ sub we_want_hdr_file
 #
 sub interesting_hdr_files
 {
-	my ($d) = @_;
-	sort grep {we_want_hdr_file $_} <$d/*.h>;
+	my ($z, $d) = @_;
+	sort grep {$z->we_want_hdr_file($_)} <$d/*.h>;
 }
 
 #
@@ -82,7 +86,7 @@ sub interesting_hdr_files
 #
 sub we_want_src_dir
 {
-	my ($x) = @_;
+	my ($z, $x) = @_;
 	return 0 if       $x =~ m,^Documentation/,;
 	return 0 if       $x =~ m,^\.git/,;
 	return 0 if       $x =~ m,^include/,;
@@ -90,7 +94,7 @@ sub we_want_src_dir
 	return 0 if       $x =~ m,^\.tmp_versions/,;
 	return 0 if       $x =~ m,^usr/,;
 	return 1 unless   $x =~ m,^arch/,;
-	return 0 unless   $x =~ m,^arch/$arch(/.*)?$,;
+	return 0 unless   $x =~ m,^arch/$z->{'arch'}(/.*)?$,;
 	return 1;
 }
 
@@ -99,10 +103,11 @@ sub we_want_src_dir
 #
 sub interesting_src_dirs
 {
+	my ($z) = @_;
 	my @d = `find . -type d`;
 	map {s/^..//} @d;
 	chomp @d;
-	sort grep {we_want_src_dir $_} @d;
+	sort grep {$z->we_want_src_dir($_)} @d;
 }
 
 #
@@ -110,7 +115,7 @@ sub interesting_src_dirs
 #
 sub we_want_src_file
 {
-	my ($x) = @_;
+	my ($z, $x) = @_;
 	return 1;
 }
 
@@ -119,8 +124,8 @@ sub we_want_src_file
 #
 sub interesting_src_files
 {
-	my ($d) = @_;
-	sort grep {we_want_src_file $_} <$d/*.c>;
+	my ($z, $d) = @_;
+	sort grep {$z->we_want_src_file($_)} <$d/*.c>;
 }
 
 #
@@ -128,10 +133,10 @@ sub interesting_src_files
 #
 sub gather
 {
-	my ($file) = @_;
+	my ($z, $file) = @_;
 
 	# bail if we've already parsed this file for some reason
-	my $n = $g->node($file);
+	my $n = $z->{'g'}->node($file);
 	return if $n->{'parsed'};
 
 	# remember that we've parsed this file
@@ -155,36 +160,39 @@ sub gather
 	# create edges for each inclusion
 	for my $h (@incs)
 	  {
-		$g->edge($file, $h);
+		$z->{'g'}->edge($file, $h);
 	  }
 }
 
-sub do_it
+sub run
 {
+	my ($z) = @_;
+
 	my ($t0, $t1);
 	my $c = cwd();
 
-	$g = new Graph;
+	$z->{'g'} = new Graph;
 
 	$t0 = new Benchmark;
 
 	print "process hdrs\n";
+	my $tree = $z->{'tree'};
 	chdir "$tree/include" || die "Bad tree: $tree";
-	map {gather $_} map {interesting_hdr_files $_} interesting_hdr_dirs;
+	map {$z->gather($_)} map {$z->interesting_hdr_files($_)} $z->interesting_hdr_dirs;
 	$t1 = new Benchmark;
 	print "Took " . timestr(timediff($t1, $t0)) . " seconds\n";
 	$t0 = $t1;
 
 	print "process src\n";
 	chdir "$tree" || die "Bad tree: $tree";
-	map {gather $_} map {interesting_src_files $_} interesting_src_dirs;
+	map {$z->gather($_)} map {$z->interesting_src_files($_)} $z->interesting_src_dirs;
 	$t1 = new Benchmark;
 	print "Took " . timestr(timediff($t1, $t0)) . " seconds\n";
 	$t0 = $t1;
 
 	chdir $c;
 
-	$g;
+	$z->{'g'};
 }
 
 1;

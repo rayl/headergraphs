@@ -13,13 +13,16 @@ use Dot;
 use Gather;
 use Report;
 
+# the gatherer which parses source files
+my $gatherer = new Gather;
+
 # the raw inclusion information
 my $g;
 
 
 sub do_it
 {
-	$g = Gather::do_it();
+	$g = $gatherer->run;
 }
 
 sub save_it
