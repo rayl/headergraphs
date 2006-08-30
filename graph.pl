@@ -8,7 +8,10 @@ use lib qw(.);
 use Benchmark;
 use Data::Dumper;
 use Cwd;
+
 use Graph;
+use Analysis;
+use Dot;
 
 # the location of the linux kernel tree
 my $tree = "/home/rayl/proj/linux-headers";
@@ -255,228 +258,6 @@ sub report_included
 	  }
 }
 
-sub collect_children
-{
-	my ($file, $n, $edges, $visiting) = @_;
-	return if $n == 0;
-	return if $visiting->{$file};
-	$edges->{$file} ||= {};
-	$visiting->{$file} = 1;
-	for my $e ($g->children($file))
-	  {
-		$edges->{$file}->{$e}++;
-		collect_children($e, $n-1, $edges, $visiting);
-	  }
-	delete $visiting->{$file};
-}
-
-sub collect_parents
-{
-	my ($file, $n, $edges, $visiting) = @_;
-	return if $n == 0;
-	return if $visiting->{$file};
-	$visiting->{$file} = 1;
-	for my $e ($g->parents($file))
-	  {
-		$edges->{$e} ||= {};
-		next if $edges->{$e}->{$file};
-		$edges->{$e}->{$file} = 1;
-		collect_parents($e, $n-1, $edges, $visiting);
-	  }
-	delete $visiting->{$file};
-}
-
-sub extract
-{
-	my ($file, $clevel, $plevel) = @_;
-	my $x = {};
-	collect_children($file, $clevel, $x, {});
-	collect_parents($file, $plevel, $x, {});
-	$x;
-}
-
-sub node_color
-{
-	my ($w) = @_;
-	if     ($w <  25) { undef }
-	elsif  ($w <  50) { "d0" }
-	elsif  ($w < 100) { "80" }
-	elsif  ($w < 150) { "40" }
-	else              { "00" }
-}
-
-sub octo_color
-{
-	my ($c) = @_;
-	"#ff${c}${c}";
-}
-
-sub blue_color
-{
-	my ($c) = @_;
-	"#${c}${c}ff";
-}
-
-sub snipped
-{
-	my ($f, $cuts, $c) = @_;
-	exists $cuts->{$f} && ((not defined $c) || ($cuts->{$f} > 4));
-}
-
-sub graph_node
-{
-	my ($map, $root, $node, $cuts, $total) = @_;
-
-	return if $map->{$node};
-	$map->{$node} = 1;
-
-	my $t = $total->{$node} || "?";
-	my $n = $g->unique_tsize($node);
-	my $c = node_color($n);
-	my $o = octo_color($c) if defined $c;
-	my $b = blue_color($c) if defined $c;
-
-	if ($root eq $node)
-	  {
-		print "\t\"$node\" [label=\"$node\\n($n/$t)\", shape=house, color=\"#0000ff\", fillcolor=\"#ffff00\", style=filled];\n";
-	  }
-	elsif (snipped($node, $cuts, $c))
-	  {
-		my $m = $cuts->{$node};
-		if ($g->children($node))
-		  {
-			print "\t\"$node\" [label=\"<$m times>\\n$node\\n($n/$t)\"";
-			if (defined $c)
-			  {
-				print ", shape=octagon, fillcolor=\"$o\", style=filled";
-			  }
-			else
-			  {
-				print ", shape=diamond, fillcolor=\"#ffff80\", style=filled";
-			  }
-			print "];\n";
-		  }
-		for my $ee (1..$m)
-		  {
-			print "\t\"$node/$ee\" [label=\"<$m>\\n$node\\n($n/$t)\", style=dashed";
-			if (defined $c)
-			  {
-				print ", shape=octagon, fontcolor=\"$o\", color=\"$o\"];\n";
-			  }
-			else
-			  {
-				print ", fontcolor=\"#c0c0c0\", color=\"#c0c0c0\"];\n";
-			  }
-		  }
-	  }
-	else
-	  {
-		print "\t\"$node\" [label=\"$node\\n($n/$t)\"";
-		print ", fillcolor=\"$b\", style=filled" if defined $c;
-		print "];\n";
-	  }
-}
-
-sub unique_tsize_len
-{
-	my ($w) = @_;
-	if     ($w <  10) { 5.0 }
-	elsif  ($w <  30) { 3.0 }
-	elsif  ($w < 100) { 1.0 }
-	elsif  ($w < 150) { 0.5 }
-	else              { 0.1 }
-}
-
-sub graph_edge
-{
-	my ($e, $f, $cuts, $m2) = @_;
-	my $w = $g->unique_tsize($f);
-	my $c = node_color($w);
-	my $l = unique_tsize_len($w);
-
-	if (snipped($f, $cuts, $c))
-	  {
-		$m2->{$f}++;
-		print "\t\"$e\" -> \"$f/" . $m2->{$f} . "\" [len=$l];\n";
-	  }
-	else
-	  {
-		print "\t\"$e\" -> \"$f\" [len=$l];\n";
-	  }
-}
-
-sub snip
-{
-	my ($file, $many, $mesh) = @_;
-	my %m = map {$_ => 0} @{$g->too_many($file, $many)};
-	map {$m{$_}++ if exists $m{$_}} map {keys %{$mesh->{$_}}} sort keys %$mesh;
-	\%m;
-}
-
-sub print_ghead
-{
-	my ($file, $mesh, $cuts, $total) = @_;
-	print "digraph \"$file\" {\n";
-	print "\toverlap=false;\n";
-	print "\tsplines=true;\n";
-	print "\troot=\"$file\";\n";
-}
-
-sub print_edges
-{
-	my ($file, $mesh, $cuts, $total) = @_;
-	my %m2;
-	for my $e (sort keys %$mesh)
-	  {
-		for my $f (keys %{$mesh->{$e}})
-		  {
-			graph_edge($e, $f, $cuts, \%m2);
-		  }
-	  }
-}
-
-sub print_nodes
-{
-	my ($file, $mesh, $cuts, $total) = @_;
-	my %n;
-	for my $e (sort keys %$mesh)
-	  {
-		graph_node(\%n, $file, $e, $cuts, $total);
-		for my $f (sort {$g->unique_tsize($b) <=> $g->unique_tsize($a)} keys %{$mesh->{$e}})
-		  {
-			graph_node(\%n, $file, $f, $cuts, $total);
-		  }
-	  }
-}
-
-sub print_gfoot
-{
-	my ($file, $mesh, $cuts, $total) = @_;
-	print "}\n";
-}
-
-sub graph2
-{
-	print_ghead(@_);
-	print_edges(@_);
-	print_nodes(@_);
-	print_gfoot(@_);
-}
-
-sub graph1
-{
-	# my ($file, $clevel, $plevel, $count) = @_;
-	graph2(analyse(@_));
-}
-
-sub analyse
-{
-	my ($file, $clevel, $plevel, $count) = @_;
-	my ($mesh) = extract($file, $clevel, $plevel);
-	my $cuts = snip($file, $count, $mesh);
-	($file, $mesh, $cuts, $g->total_tsize($file));
-}
-
 my $by_edge_hash;
 
 sub by_total
@@ -517,16 +298,23 @@ sub report2
 
 sub reporta
 {
-	report1(analyse(@_));
+	report1(Analysis::analyse($g, @_));
 }
 
 sub reportb
 {
-	report2(analyse(@_));
+	report2(Analysis::analyse($g, @_));
+}
+
+sub graph1
+{
+	# my ($file, $clevel, $plevel, $count) = @_;
+	Dot::graph2($g, Analysis::analyse($g, @_));
 }
 
 sub graph
 {
+	# my ($file, $clevel, $plevel, $count) = @_;
 	my ($o) = @_;
 	$o =~ s/[.\/]/_/g;
 	$o =~ s/$/.dot/;
