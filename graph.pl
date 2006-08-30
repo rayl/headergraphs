@@ -290,26 +290,34 @@ sub unique_tsize
 	$z->{'unique_tsize'}->{$node} ||= $z->_unique_tsize($node, {});
 }
 
-# Calculate the total transitive size for a given root node.
+# Calculate the total transitive size for all nodes in the inclusion tree
+# rooted at a given root node.
 sub _total_tsize
 {
-	# node is the current node during the traversal. map
-	# holds the _additional_ unique nodes found from each node
-	# when they were current during the traversal. visit contains
-	# an entry for each active node during the depth-first search,
-	# which lets us detect and prevent infinite recursion.
-	my ($z, $node, $map, $visit) = @_;
+	# node is the current node during the traversal. total
+	# holds the total tsize for each node in the inclusion tree
+	# rooted at the original root node.  visiting contains an entry
+	# for each active node during the depth-first search.
+	my ($z, $node, $total, $visiting) = @_;
 
-	$map->{$node} = 0;
-	unless ($visit->{$node})
-	  {
-		my $t = 1;
-		$visit->{$node} = 1;
-		map {$t += $map->{$_} || $z->_total_tsize($_, $map, $visit)->{$_}} $z->children($node);
-		delete $visit->{$node};
-		$map->{$node} = $t;
-	  }
-	$map;
+	# detect and prevent infinite recursion from circular inclusions.
+	return if $visiting->{$node};
+
+	# mark this node as part of the currently active inclusion path
+	$visiting->{$node} = 1;
+
+	# every time we visit a node, all nodes in the inclusion path back
+	# up the root increase their total tsize by one.
+	map {$total->{$_}++} keys %$visiting;
+
+	# process each of our children in turn
+	map { $z->_total_tsize($_, $total, $visiting) } $z->children($node);
+
+	# remove this node from the active inclusion path
+	delete $visiting->{$node};
+
+	# return the total tsize map constructed so far
+	$total;
 }
 
 # Look up (or calculate and cache) the total tsize for a given root node.
