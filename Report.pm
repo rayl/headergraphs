@@ -52,7 +52,9 @@ sub by_unique
 
 sub report1
 {
-	my ($g, $file, $mesh, $cuts, $total) = @_;
+	my ($a) = @_;
+	my ($g, $file, $mesh, $cuts) = ($a->{'graph'}, $a->{'file'}, $a->{'mesh'}, $a->{'cuts'});
+	my $total = $g->total_tsize($file);
 	$by_edge_hash = $total;
 	$graph = $g;
 	for my $e (sort by_total keys %$mesh)
@@ -65,7 +67,9 @@ sub report1
 
 sub report2
 {
-	my ($g, $file, $mesh, $cuts, $total) = @_;
+	my ($a) = @_;
+	my ($g, $file, $mesh, $cuts) = ($a->{'graph'}, $a->{'file'}, $a->{'mesh'}, $a->{'cuts'});
+	my $total = $g->total_tsize($file);
 	$by_edge_hash = $total;
 	$graph = $g;
 	for my $e (sort by_unique keys %$mesh)

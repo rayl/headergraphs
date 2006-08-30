@@ -72,12 +72,12 @@ sub repl
 
 sub reporta
 {
-	Report::report1(Analysis::analyse($graph, @_));
+	Report::report1(Analysis->new($graph, @_));
 }
 
 sub reportb
 {
-	Report::report2(Analysis::analyse($graph, @_));
+	Report::report2(Analysis->new($graph, @_));
 }
 
 sub graph1
