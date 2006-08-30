@@ -59,7 +59,7 @@ sub analyse
 	my ($g, $file, $clevel, $plevel, $count) = @_;
 	my ($mesh) = extract($g, $file, $clevel, $plevel);
 	my $cuts = snip($g, $file, $count, $mesh);
-	($file, $mesh, $cuts, $g->total_tsize($file));
+	($g, $file, $mesh, $cuts);
 }
 
 1;

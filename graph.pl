@@ -72,18 +72,18 @@ sub repl
 
 sub reporta
 {
-	Report::report1($graph, Analysis::analyse($graph, @_));
+	Report::report1(Analysis::analyse($graph, @_));
 }
 
 sub reportb
 {
-	Report::report2($graph, Analysis::analyse($graph, @_));
+	Report::report2(Analysis::analyse($graph, @_));
 }
 
 sub graph1
 {
 	# my ($file, $clevel, $plevel, $count) = @_;
-	Dot::graph2($graph, Analysis::analyse($graph, @_));
+	Dot::graph2(Analysis::analyse($graph, @_));
 }
 
 sub graph

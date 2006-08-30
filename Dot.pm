@@ -117,7 +117,7 @@ sub graph_edge
 
 sub print_ghead
 {
-	my ($file, $mesh, $cuts, $total) = @_;
+	my ($g, $file, $mesh, $cuts) = @_;
 	print "digraph \"$file\" {\n";
 	print "\toverlap=false;\n";
 	print "\tsplines=true;\n";
@@ -126,7 +126,7 @@ sub print_ghead
 
 sub print_edges
 {
-	my ($g, $file, $mesh, $cuts, $total) = @_;
+	my ($g, $file, $mesh, $cuts) = @_;
 	my %m2;
 	for my $e (sort keys %$mesh)
 	  {
@@ -139,21 +139,22 @@ sub print_edges
 
 sub print_nodes
 {
-	my ($g, $file, $mesh, $cuts, $total) = @_;
+	my ($g, $file, $mesh, $cuts) = @_;
 	my %n;
+	my $t = $g->total_tsize($file);
 	for my $e (sort keys %$mesh)
 	  {
-		graph_node($g, \%n, $file, $e, $cuts, $total);
+		graph_node($g, \%n, $file, $e, $cuts, $t);
 		for my $f (sort {$g->unique_tsize($b) <=> $g->unique_tsize($a)} keys %{$mesh->{$e}})
 		  {
-			graph_node($g, \%n, $file, $f, $cuts, $total);
+			graph_node($g, \%n, $file, $f, $cuts, $t);
 		  }
 	  }
 }
 
 sub print_gfoot
 {
-	my ($file, $mesh, $cuts, $total) = @_;
+	my ($g, $file, $mesh, $cuts) = @_;
 	print "}\n";
 }
 
