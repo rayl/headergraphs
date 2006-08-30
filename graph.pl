@@ -11,34 +11,70 @@ package Graph;
 #     order = count(*.c *.h)
 #     size  = count(#include lines)
 
-# keep a forward graph (includes) and a reverse (included)
-
-# other node data
-#     inclusion tree size (order of graph rooted at node)
-
 sub new
 {
 	my ($type) = @_;
+
+	# graph objects use a hash representation
 	my $z = bless {}, ref $type || $type;
-	$z->{'V'} = {};
-	$z->{'E'} = {};
-	$z->{'R'} = {};
-	$z->{'T'} = {};
-	$z->{'U'} = {};
-	$z->{'X'} = {};
+
+	# The source and header files.
+	#
+	# the graph vertices, one per C and H file.  A hash of file
+	# names to Graph::Node objects
+	$z->{'vertex'} = {};
+
+	# The '#include's' relationship
+	#
+	# the edge lists, one per file with '#include' lines. a
+	# hash of source node names to a hash of target node
+	# names to Graph::Edge objects.
+	$z->{'edge'} = {};
+
+	# The '#include'd by' relationship
+	#
+	# the reverse edge lists, once per '#include' target.  A
+	# hash of target node names to a hash of source node
+	# names to Graph::Edge objects.
+	$z->{'reverse_edge'} = {};
+
+	# the total transitive size, one per node.  a hash of
+	# root nodes to integers defining the total number of
+	# header files that would be included if that root node
+	# were compiled standalone with _NO_ include guards in use.
+	$z->{'total_tsize'} = {};
+
+	# the unique transitive size, one per node.  a hash of
+	# root nodes to integers defining the unique number of
+	# header files that would be included if that root node
+	# were compiled standalone with include guards in use.
+	$z->{'unique_tsize'} = {};
+
+	# the tmany list, a hash of root nodes to arrays of nodes
+	# which are included "many" times in the inclusion graph
+	# of that root.
+	$z->{'tmany'} = {};
+
+	# the tmany indegree used as the definition of "many".
+	# the results of tmany() are cached, but depend on the
+	# indegree used as the value of "many".  if this value
+	# changes, we notice and flush the cache.
+	$z->{'count'} = undef;
+
+	# return the new empty graph object
 	$z;
 }
 
 sub nodes
 {
 	my ($z) = @_;
-	sort keys %{$z->{'V'}};
+	sort keys %{$z->{'vertex'}};
 }
 
 sub node
 {
 	my ($z, $name) = @_;
-	$z->{'V'}->{$name} ||= Graph::Node->new;
+	$z->{'vertex'}->{$name} ||= Graph::Node->new;
 }
 
 sub edge
@@ -50,24 +86,24 @@ sub edge
 	$z->node($head);
 
 	# do the reverse edge
-	$z->{'R'}->{$head} ||= {};
-	$z->{'R'}->{$head}->{$tail} ||= Graph::Edge->new;
+	$z->{'reverse_edge'}->{$head} ||= {};
+	$z->{'reverse_edge'}->{$head}->{$tail} ||= Graph::Edge->new;
 
 	# do the forward edge
-	$z->{'E'}->{$tail} ||= {};
-	$z->{'E'}->{$tail}->{$head} ||= Graph::Edge->new;
+	$z->{'edge'}->{$tail} ||= {};
+	$z->{'edge'}->{$tail}->{$head} ||= Graph::Edge->new;
 }
 
 sub has_node
 {
 	my ($z, $node) = @_;
-	$z->{'V'}->{$node};
+	$z->{'vertex'}->{$node};
 }
 
 sub has_edge
 {
 	my ($z, $tail, $head) = @_;
-	if (my $x = $z->{'E'}->{$tail})
+	if (my $x = $z->{'edge'}->{$tail})
 	  {
 		$x->{$head};
 	  }
@@ -76,13 +112,13 @@ sub has_edge
 sub order
 {
 	my ($z) = @_;
-	scalar keys %{$z->{'V'}};
+	scalar keys %{$z->{'vertex'}};
 }
 
 sub size
 {
 	my ($z) = @_;
-	my $e = $z->{'E'};
+	my $e = $z->{'edge'};
 	my $c;
 	map {$c += scalar keys %{$e->{$_}}} keys %{$e};
 	$c;
@@ -91,13 +127,13 @@ sub size
 sub degree_out
 {
 	my ($z, $node) = @_;
-	scalar keys %{$z->{'E'}->{$node} || {}};
+	scalar keys %{$z->{'edge'}->{$node} || {}};
 }
 
 sub degree_in
 {
 	my ($z, $node) = @_;
-	scalar keys %{$z->{'R'}->{$node} || {}};
+	scalar keys %{$z->{'reverse_edge'}->{$node} || {}};
 }
 
 sub degree
@@ -109,13 +145,13 @@ sub degree
 sub children
 {
 	my ($z, $node) = @_;
-	keys %{$z->{'E'}->{$node} || {}};
+	keys %{$z->{'edge'}->{$node} || {}};
 }
 
 sub parents
 {
 	my ($z, $node) = @_;
-	keys %{$z->{'R'}->{$node} || {}};
+	keys %{$z->{'reverse_edge'}->{$node} || {}};
 }
 
 sub adjacent
@@ -194,7 +230,7 @@ sub _unique_tsize
 sub unique_tsize
 {
 	my ($z, $node) = @_;
-	$z->{'U'}->{$node} ||= $z->_unique_tsize($node, {});
+	$z->{'unique_tsize'}->{$node} ||= $z->_unique_tsize($node, {});
 }
 
 sub _total_tsize
@@ -216,7 +252,7 @@ sub _total_tsize
 sub total_tsize
 {
 	my ($z, $node) = @_;
-	$z->{'T'}->{$node} ||= $z->_total_tsize($node, {});
+	$z->{'total_tsize'}->{$node} ||= $z->_total_tsize($node, {});
 }
 
 sub _tmany
@@ -230,15 +266,15 @@ sub _tmany
 sub tmany
 {
 	my ($z, $node, $count) = @_;
-	$z->{'X'}->{$node} ||= $z->_tmany($node, {}, $count);
-}
 
-sub reset
-{
-	my ($z) = @_;
-	$z->{'T'} = {};
-	$z->{'U'} = {};
-	$z->{'X'} = {};
+	# flush the tmany cache if the indegree changes
+	unless ($z->{'count'} == $count)
+	  {
+		$z->{'tmany'} = {};
+		$z->{'count'} = $count;
+	  }
+
+	$z->{'tmany'}->{$node} ||= $z->_tmany($node, {}, $count);
 }
 
 package Graph::Node;
@@ -805,7 +841,6 @@ sub show
 	system "dot", "-Tps", "-o", $ps, $dot;
 	print "Displaying graph...\n";
 	system "kghostview", $ps;
-	$g->reset;
 	0;
 }
 
@@ -832,7 +867,7 @@ sub help
 EOF
 }
 
-load_it;
-reportb "linux/spinlock.h", -1, 0, 2;
+#load_it;
+#reportb "linux/spinlock.h", -1, 0, 2;
 repl;
 
