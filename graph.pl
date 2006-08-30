@@ -83,7 +83,7 @@ sub reportb
 sub graph1
 {
 	# my ($file, $clevel, $plevel, $count) = @_;
-	Dot::graph2(Analysis::analyse($graph, @_));
+	Dot::graph2(Analysis->new($graph, @_));
 }
 
 sub graph

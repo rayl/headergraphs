@@ -5,61 +5,67 @@ use warnings;
 
 package Analysis;
 
-
 sub collect_children
 {
-	my ($g, $file, $n, $edges, $visiting) = @_;
+	my ($z, $file, $n, $visiting) = @_;
 	return if $n == 0;
 	return if $visiting->{$file};
-	$edges->{$file} ||= {};
+	$z->{'mesh'}->{$file} ||= {};
 	$visiting->{$file} = 1;
-	for my $e ($g->children($file))
+	for my $e ($z->{'graph'}->children($file))
 	  {
-		$edges->{$file}->{$e}++;
-		collect_children($g, $e, $n-1, $edges, $visiting);
+		$z->{'mesh'}->{$file}->{$e}++;
+		$z->collect_children($e, $n-1, $visiting);
 	  }
 	delete $visiting->{$file};
 }
 
 sub collect_parents
 {
-	my ($g, $file, $n, $edges, $visiting) = @_;
+	my ($z, $file, $n, $visiting) = @_;
 	return if $n == 0;
 	return if $visiting->{$file};
 	$visiting->{$file} = 1;
-	for my $e ($g->parents($file))
+	for my $e ($z->{'graph'}->parents($file))
 	  {
-		$edges->{$e} ||= {};
-		next if $edges->{$e}->{$file};
-		$edges->{$e}->{$file} = 1;
-		collect_parents($g, $e, $n-1, $edges, $visiting);
+		$z->{'mesh'}->{$e} ||= {};
+		next if $z->{'mesh'}->{$e}->{$file};
+		$z->{'mesh'}->{$e}->{$file} = 1;
+		$z->collect_parents($e, $n-1, $visiting);
 	  }
 	delete $visiting->{$file};
 }
 
-sub extract
-{
-	my ($g, $file, $clevel, $plevel) = @_;
-	my $x = {};
-	collect_children($g, $file, $clevel, $x, {});
-	collect_parents($g, $file, $plevel, $x, {});
-	$x;
-}
-
 sub snip
 {
-	my ($g, $file, $many, $mesh) = @_;
-	my %m = map {$_ => 0} @{$g->too_many($file, $many)};
-	map {$m{$_}++ if exists $m{$_}} map {keys %{$mesh->{$_}}} sort keys %$mesh;
-	\%m;
+	my ($z, $mesh) = @_;
+	my %m = map {$_ => 0} @{$z->{'graph'}->too_many($z->{'file'}, $z->{'many'})};
+	map {$m{$_}++ if exists $m{$_}} map {keys %{$z->{'mesh'}->{$_}}} sort keys %{$z->{'mesh'}};
+	$z->{'cuts'} = \%m;
 }
 
-sub analyse
+sub new
 {
-	my ($g, $file, $clevel, $plevel, $count) = @_;
-	my ($mesh) = extract($g, $file, $clevel, $plevel);
-	my $cuts = snip($g, $file, $count, $mesh);
-	($g, $file, $mesh, $cuts);
+	my ($type, $g, $file, $clevel, $plevel, $many) = @_;
+
+	# analysis objects use a hash representation
+	my $z = bless {}, ref $type || $type;
+
+	# save the parms for this analysis
+	$z->{'graph'} = $g;
+	$z->{'file'} = $file;
+	$z->{'clevel'} = $clevel;
+	$z->{'plevel'} = $plevel;
+	$z->{'many'} = $many;
+
+	# perform the analysis
+	$z->{'mesh'} = {};
+	$z->collect_children($file, $clevel, {});
+	$z->collect_parents($file, $plevel, {});
+	$z->snip;
+
+	# return the new object
+	$z;
 }
 
 1;
