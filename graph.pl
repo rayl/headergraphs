@@ -257,16 +257,15 @@ sub report_included
 
 sub collect_children
 {
-	my ($file, $n, $edges, $total, $visiting) = @_;
+	my ($file, $n, $edges, $visiting) = @_;
 	return if $n == 0;
 	return if $visiting->{$file};
 	$edges->{$file} ||= {};
 	$visiting->{$file} = 1;
-	map {$total->{$_}++} keys %$visiting;
 	for my $e ($g->children($file))
 	  {
 		$edges->{$file}->{$e}++;
-		collect_children($e, $n-1, $edges, $total, $visiting);
+		collect_children($e, $n-1, $edges, $visiting);
 	  }
 	delete $visiting->{$file};
 }
@@ -291,10 +290,9 @@ sub extract
 {
 	my ($file, $clevel, $plevel) = @_;
 	my $x = {};
-	my $t = {};
-	collect_children($file, $clevel, $x, $t, {});
+	collect_children($file, $clevel, $x, {});
 	collect_parents($file, $plevel, $x, {});
-	($x, $t);
+	$x;
 }
 
 sub node_color
@@ -474,9 +472,9 @@ sub graph1
 sub analyse
 {
 	my ($file, $clevel, $plevel, $count) = @_;
-	my ($mesh, $total) = extract($file, $clevel, $plevel);
+	my ($mesh) = extract($file, $clevel, $plevel);
 	my $cuts = snip($file, $count, $mesh);
-	($file, $mesh, $cuts, $total);
+	($file, $mesh, $cuts, $g->total_tsize($file));
 }
 
 my $by_edge_hash;
