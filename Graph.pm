@@ -352,7 +352,7 @@ sub too_many
 	my ($z, $node, $many) = @_;
 
 	# flush the too_many cache if the definition of "many" changes
-	unless ($z->{'many'} == $many)
+	unless (defined($z->{'many'}) && ($z->{'many'} == $many))
 	  {
 		$z->{'too_many'} = {};
 		$z->{'many'} = $many;
