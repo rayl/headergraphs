@@ -50,16 +50,16 @@ sub new
 	# were compiled standalone with include guards in use.
 	$z->{'unique_tsize'} = {};
 
-	# the tmany list, a hash of root nodes to arrays of nodes
+	# the too_many list, a hash of root nodes to arrays of nodes
 	# which are included "many" times in the inclusion graph
 	# of that root.
-	$z->{'tmany'} = {};
+	$z->{'too_many'} = {};
 
-	# the tmany indegree used as the definition of "many".
-	# the results of tmany() are cached, but depend on the
+	# the indegree used as the definition of "many".
+	# the results of too_many() are cached, but depend on the
 	# indegree used as the value of "many".  if this value
 	# changes, we notice and flush the cache.
-	$z->{'count'} = undef;
+	$z->{'many'} = undef;
 
 	# return the new empty graph object
 	$z;
@@ -327,26 +327,39 @@ sub total_tsize
 	$z->{'total_tsize'}->{$node} ||= $z->_total_tsize($node, {}, {});
 }
 
-sub _tmany
+# Calculate the too_many list for a given root node.
+sub _too_many
 {
-	my ($z, $node, $map, $count) = @_;
-	$map->{$node}++;
-	map {$z->_tmany($_, $map, $count)} $z->children($node) unless $map->{$node} > 1;
-	[ grep {$map->{$_} > $count} keys %$map ];
+	# count tracks how often a file is included.  many is the indegree
+	# used as the threshold for "too many" inclusions
+	my ($z, $node, $count, $many) = @_;
+
+	# increase the number of times this node has been included
+	$count->{$node}++;
+
+	# process each of our children, unless we have already processed the
+	# current node, in which case we have already done them.
+	map {$z->_too_many($_, $count, $many)} $z->children($node) unless $count->{$node} > 1;
+
+	# return a list of all nodes whose inclusion count exceeds the
+	# threshold value
+	[ grep {$count->{$_} > $many} keys %$count ];
 }
 
-sub tmany
+# Look up (or calculate and cache) the too_many list for a given root node.
+sub too_many
 {
-	my ($z, $node, $count) = @_;
+	# many is the indegree used as the threshold for "many" inclusions
+	my ($z, $node, $many) = @_;
 
-	# flush the tmany cache if the indegree changes
-	unless ($z->{'count'} == $count)
+	# flush the too_many cache if the definition of "many" changes
+	unless ($z->{'many'} == $many)
 	  {
-		$z->{'tmany'} = {};
-		$z->{'count'} = $count;
+		$z->{'too_many'} = {};
+		$z->{'many'} = $many;
 	  }
 
-	$z->{'tmany'}->{$node} ||= $z->_tmany($node, {}, $count);
+	$z->{'too_many'}->{$node} ||= $z->_too_many($node, {}, $many);
 }
 
 package Graph::Node;
@@ -773,8 +786,8 @@ sub graph_edge
 
 sub snip
 {
-	my ($file, $count, $mesh) = @_;
-	my %m = map {$_ => 0} @{$g->tmany($file, $count)};
+	my ($file, $many, $mesh) = @_;
+	my %m = map {$_ => 0} @{$g->too_many($file, $many)};
 	map {$m{$_}++ if exists $m{$_}} map {keys %{$mesh->{$_}}} sort keys %$mesh;
 	\%m;
 }
