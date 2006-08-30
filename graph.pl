@@ -17,12 +17,12 @@ use Report;
 my $gatherer = new Gather;
 
 # the raw inclusion information
-my $g;
+my $graph;
 
 
 sub do_it
 {
-	$g = $gatherer->run;
+	$graph = $gatherer->run;
 }
 
 sub save_it
@@ -33,7 +33,7 @@ sub save_it
 		return;
 	  }
 
-	print D Data::Dumper->Dump([$g], [qw(g)]);
+	print D Data::Dumper->Dump([$graph], [qw(graph)]);
 
 	close D;
 }
@@ -72,18 +72,18 @@ sub repl
 
 sub reporta
 {
-	Report::report1($g, Analysis::analyse($g, @_));
+	Report::report1($graph, Analysis::analyse($graph, @_));
 }
 
 sub reportb
 {
-	Report::report2($g, Analysis::analyse($g, @_));
+	Report::report2($graph, Analysis::analyse($graph, @_));
 }
 
 sub graph1
 {
 	# my ($file, $clevel, $plevel, $count) = @_;
-	Dot::graph2($g, Analysis::analyse($g, @_));
+	Dot::graph2($graph, Analysis::analyse($graph, @_));
 }
 
 sub graph
