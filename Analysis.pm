@@ -10,6 +10,7 @@ sub collect_children
 	my ($z, $file, $n, $visiting) = @_;
 	return if $n == 0;
 	return if $visiting->{$file};
+	$z->{'nodelist'}->{$file} = 1;
 	$z->{'mesh'}->{$file} ||= {};
 	$visiting->{$file} = 1;
 	for my $e ($z->{'graph'}->children($file))
@@ -26,6 +27,7 @@ sub collect_parents
 	return if $n == 0;
 	return if $visiting->{$file};
 	$visiting->{$file} = 1;
+	$z->{'nodelist'}->{$file} = 1;
 	for my $e ($z->{'graph'}->parents($file))
 	  {
 		$z->{'mesh'}->{$e} ||= {};
@@ -60,6 +62,7 @@ sub new
 
 	# perform the analysis
 	$z->{'mesh'} = {};
+	$z->{'nodelist'} = {};
 	$z->collect_children($file, $clevel, {});
 	$z->collect_parents($file, $plevel, {});
 	$z->snip;
