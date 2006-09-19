@@ -1,0 +1,94 @@
+
+A set of scripts to visualize header inclusion trees.
+
+
+Quickstart
+----------
+
+Install perl, graphviz, and kghostview.
+
+Configure your linux kernel and 'make prepare'.
+
+Adjust the Gather::Linux line near top of graph.pl.  Only
+tested on x86_64 so far.
+
+./graph.pl
+  - do_it (this takes 30-120 seconds)
+  - save_it
+
+./graph.pl
+  - load_it (this takes about 10 seconds)
+  - x "linux/types.h"
+  - x "linux/list.h"
+  - x "linux/sched.h"
+  - x "fs/dcache.c"
+
+
+
+Concepts
+--------
+
+tsize
+  transitive size, a measure of how many header files are included
+  from a given top-level root file.
+
+unique tsize
+  The number of different files included from a given root file.
+
+total tsize
+  The number of files included from a given root file, if include
+  guards were not used.  this number is useful when evaluating header
+  file partitioning schemes which involve splitting up a header file.
+  Doing that will tend to slightly increase the unique tsize while
+  drastically lowering the total tsize.
+
+
+   
+Description
+-----------
+
+Nodes in the graph repesent files, edges represent inclusions.
+
+
+Node Shapes:
+
+  The house-shaped pentagon is the root of the inclusion tree.
+
+  Solid circles are normal inclusion targets.
+
+  Diamonds and solid octagons are popular inclusion targets whose
+  incoming edges have been snipped to relax the graph.
+
+  Dashed circles are the snipped edges which originally pointed
+  to a diamond.
+
+  Dashed octagons are the snipped edges which originally pointed
+  to an octagon.
+
+
+Node Colors:
+
+  Blue represents the "primary inclusion hierarchy".  In other words,
+  the inclusion hierarchy formed by the files with large unique tsizes.
+  This inclusion chain almost always remains contiguous and is rarely
+  snipped.
+
+  Yellow represents a popular inclusion target with small unique tsize.
+
+  Red represents a popular inclusion target with a large unique tsize.
+
+  Dark grey represents normal header files.
+
+  The more saturated a red or blue colored object is, the large the
+  unique tsize.
+
+
+Node Labels:
+
+  Unsnipped nodes have the file name with the unique and total tsizes in
+  round braces.
+
+  Snipped nodes also include the number of incoming edges (the number of
+  times the file was included) in diamond braces.
+
+
