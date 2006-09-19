@@ -17,25 +17,9 @@
 export GIT_AUTHOR_EMAIL=rayl@mail.com
 export GIT_COMMITTER_EMAIL=rayl@mail.com
 
-Q () {
-	./header.pl graph $* | ${DOT:=dot} -Tps > foo.ps
-	kghostview foo.ps
-}
-
-q () {
-	Q $1 -1 0
-}
-
-qq () {
-	Q $1 1 0
-}
-
 spiderweb () {
-	DOT=neato Q $1 -1 0
-}
-
-w () {
-	./header.pl transitive | less
+	neato -Tps $1 > foo.ps
+	kghostview foo.ps
 }
 
 # figure out the differences in inclusion tree sizes
