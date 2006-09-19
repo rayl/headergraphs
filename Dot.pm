@@ -8,7 +8,12 @@ use warnings;
 
 package Dot;
 
-sub node_color
+#
+# Nodes are colored red or blue if they have sufficiently
+# large subtrees.  The saturation of the color rises with
+# increasing subtree size.
+#
+sub saturation
 {
 	my ($weight) = @_;
 	if     ($weight <  25) { undef }
@@ -18,34 +23,53 @@ sub node_color
 	else              { "00" }
 }
 
-sub octo_color
+#
+# Problem nodes (large subtrees included many times) have
+# a reddish color.
+#
+sub problem_color
 {
 	my ($c) = @_;
-	"#ff${c}${c}";
+	"#ff${c}${c}" if defined $c;
 }
 
-sub blue_color
+#
+# Backbone nodes (in the "primary inclusion hierarchy") have
+# a bluish color.
+#
+sub backbone_color
 {
 	my ($c) = @_;
-	"#${c}${c}ff";
+	"#${c}${c}ff" if defined $c;
 }
 
+#
+# Decide whether an edge to the target node should be snipped in order
+# to relax the graph.
+#
 sub should_snip
 {
 	my ($a, $target) = @_;
-
-	# figure out how large the subtree rooted at the target is
-	my $weight = $a->{'graph'}->unique_tsize($target);
-
-	# check whether we want to color the target node
-	my $color = node_color($weight);
-
-	# bind a local name to the list of potential cut points
 	my $cuts = $a->{'cuts'};
 
-	# we should snip the edge if the target node qualifies for cutting
-	# (in other words, if it has too many incoming edges), FIXME
-	exists $cuts->{$target} && ((not defined $color) || ($cuts->{$target} > 4));
+	# we should not snip this edge unless the target has "too many"
+	# incoming edges
+	return 0 unless exists $cuts->{$target};
+
+	# we want to snip this edge unless it's part of an important (large)
+	# subtree.  in that case, we'd like this "primary hierarchy" to remain
+	# contiguous on the graph
+	my $weight = $a->{'graph'}->unique_tsize($target);
+	my $important = saturation($weight);
+	return 1 unless defined $important;
+
+	# this node is part of the "primary hierarchy", but if it has more
+	# than 4 incoming edges, we'll snip it anyway.  otherwise, the graph
+	# gets too cluttered.
+	return 1 unless $cuts->{$target} < 5;
+
+	# do not snip nodes in the primary hierarchy with few incoming edges
+	return 0;
 }
 
 sub print_node
@@ -55,36 +79,52 @@ sub print_node
 	my $g = $a->{'graph'};
 	my $t = $g->total_tsize($a->{'file'})->{$node} || "?";
 	my $n = $g->unique_tsize($node);
-	my $c = node_color($n);
-	my $o = octo_color($c) if defined $c;
-	my $b = blue_color($c) if defined $c;
+	my $c = saturation($n);
 
+	# if we are printing the root node for this analysis, make it into a yellow house shape
 	if ($node eq $a->{'file'})
 	  {
 		print "\t\"$node\" [label=\"$node\\n($n/$t)\", shape=house, color=\"#0000ff\", fillcolor=\"#ffff00\", style=filled];\n";
 	  }
+
+
+	# if we are printing a node with many incoming edges...
 	elsif (should_snip($a, $node))
 	  {
+
+		# look up how many incoming edges we have
 		my $m = $a->{'cuts'}->{$node};
-		if ($g->children($node))
+
+		# print the node, mentioning how many times it is included
+		print "\t\"$node\" [label=\"<$m times>\\n$node\\n($n/$t)\"";
+
+
+		# if we have determined that this node is both heavy and popular,
+		# print it as a red octagon, otherwise just flag it as a yellow diamond
+		if (defined $c)
 		  {
-			print "\t\"$node\" [label=\"<$m times>\\n$node\\n($n/$t)\"";
-			if (defined $c)
-			  {
-				print ", shape=octagon, fillcolor=\"$o\", style=filled";
-			  }
-			else
-			  {
-				print ", shape=diamond, fillcolor=\"#ffff80\", style=filled";
-			  }
-			print "];\n";
+			my $o = problem_color($c);
+			print ", shape=octagon, fillcolor=\"$o\", style=filled";
 		  }
+		else
+		  {
+			print ", shape=diamond, fillcolor=\"#ffff80\", style=filled";
+		  }
+		print "];\n";
+
+		# print the array of ghosts for this node.
 		for my $ee (2..$m)
 		  {
-			print "\t\"$node/$ee\" [label=\"<$m>\\n$node\\n($n/$t)\", style=dashed";
+
+			# replicate the information from the main node
+			print "\t\"$node/$ee\" [label=\"<$m times>\\n$node\\n($n/$t)\", style=dashed";
+
+			# if this is a heavy and popular node, draw it as a dark dashed octagon so
+			# it's more visible, without being intrusive.  regular popular nodes just
+			# show up as dim dashed circles.
 			if (defined $c)
 			  {
-				print ", shape=octagon, fontcolor=\"$o\", color=\"$o\"];\n";
+				print ", shape=octagon, fontcolor=\"#000000\", color=\"#000000\"];\n";
 			  }
 			else
 			  {
@@ -92,10 +132,13 @@ sub print_node
 			  }
 		  }
 	  }
+
+	# if we are printing an ordinary node
 	else
 	  {
 		print "\t\"$node\" [label=\"$node\\n($n/$t)\"";
-		print ", fillcolor=\"$b\", style=filled" if defined $c;
+		my $b = backbone_color($c);
+		print ", fillcolor=\"$b\", style=filled" if defined $b;
 		print "];\n";
 	  }
 }
