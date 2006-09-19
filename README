@@ -65,6 +65,9 @@ Node Shapes:
   Dashed octagons are the snipped edges which originally pointed
   to an octagon.
 
+  Dashed nodes are also referred to as the "ghosts" of diamonds and
+  octagons.
+
 
 Node Colors:
 
