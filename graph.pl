@@ -10,7 +10,7 @@ use Data::Dumper;
 use Graph;
 use Analysis;
 use Dot;
-use Gather::Git;
+use Gather::Linux;
 use Report;
 
 # the gatherer which parses source files
@@ -131,8 +131,8 @@ sub help
 {
 	print <<EOF;
   do_it
-  load
-  dump
+  save_it
+  load_it
   graph file,out,in
   show file,out,in
   report
