@@ -66,7 +66,7 @@ sub graph_node
 			  }
 			print "];\n";
 		  }
-		for my $ee (1..$m)
+		for my $ee (2..$m)
 		  {
 			print "\t\"$node/$ee\" [label=\"<$m>\\n$node\\n($n/$t)\", style=dashed";
 			if (defined $c)
@@ -107,7 +107,14 @@ sub graph_edge
 	if (snipped($f, $cuts, $c))
 	  {
 		$m2->{$f}++;
-		print "\t\"$e\" -> \"$f/" . $m2->{$f} . "\" [len=$l];\n";
+		if ($m2->{$f} == 1)
+		  {
+			print "\t\"$e\" -> \"$f\" [len=$l];\n";
+		  }
+		else
+		  {
+			print "\t\"$e\" -> \"$f/" . $m2->{$f} . "\" [len=$l];\n";
+		  }
 	  }
 	else
 	  {
