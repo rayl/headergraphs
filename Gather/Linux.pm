@@ -5,7 +5,7 @@ use warnings;
 use lib qw(.);
 
 
-package Gather;
+package Gather::Linux;
 
 use Benchmark;
 use Cwd;
@@ -15,19 +15,16 @@ use Graph;
 
 sub new
 {
-	my ($type) = @_;
+	my ($type, $tree, $arch) = @_;
 
         # gather objects use a hash representation
         my $z = bless {}, ref $type || $type;
 
 	# the location of the linux kernel tree
-	$z->{'tree'} = "/opt/BR/src/linux";
+	$z->{'tree'} = $tree;
 
 	# the specific asm-* directories of interest.
-	$z->{'arch'} =
-		# "arm";
-		# "i386";
-		"x86_64";
+	$z->{'arch'} = $arch;
 
 	$z;
 }

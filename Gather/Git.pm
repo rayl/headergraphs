@@ -5,7 +5,7 @@ use warnings;
 use lib qw(.);
 
 
-package Gather;
+package Gather::Git;
 
 use Benchmark;
 use Cwd;
@@ -15,13 +15,13 @@ use Graph;
 
 sub new
 {
-	my ($type) = @_;
+	my ($type, $tree) = @_;
 
         # gather objects use a hash representation
         my $z = bless {}, ref $type || $type;
 
 	# the location of the git tree
-	$z->{'tree'} = "/home/rayl/proj/git";
+	$z->{'tree'} = $tree;
 
 	$z;
 }

@@ -11,10 +11,12 @@ use Graph;
 use Analysis;
 use Dot;
 use Gather::Linux;
+use Gather::Git;
 use Report;
 
 # the gatherer which parses source files
-my $gatherer = new Gather;
+#my $gatherer = new Gather::Git("/home/rayl/proj/git");
+my $gatherer = new Gather::Linux("/opt/BR/src/linux", "x86_64");
 
 # the raw inclusion information
 my $graph;
