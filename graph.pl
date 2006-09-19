@@ -10,7 +10,7 @@ use Data::Dumper;
 use Graph;
 use Analysis;
 use Dot;
-use Gather;
+use Gather::Git;
 use Report;
 
 # the gatherer which parses source files
@@ -110,6 +110,11 @@ sub show
 	print "Displaying graph...\n";
 	system "kghostview", $ps;
 	0;
+}
+
+sub world
+{
+	map { show($_, -1, 0, 2) } $graph->nodes;
 }
 
 sub x

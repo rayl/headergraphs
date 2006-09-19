@@ -20,14 +20,8 @@ sub new
         # gather objects use a hash representation
         my $z = bless {}, ref $type || $type;
 
-	# the location of the linux kernel tree
-	$z->{'tree'} = "/home/rayl/proj/linux-headers";
-
-	# the specific asm-* directories of interest.
-	$z->{'arch'} =
-		# "arm";
-		# "i386";
-		"x86_64";
+	# the location of the git tree
+	$z->{'tree'} = "/home/rayl/proj/git";
 
 	$z;
 }
@@ -39,10 +33,8 @@ sub new
 sub we_want_hdr_dir
 {
 	my ($z, $x) = @_;
-	return 0 if       $x =~ m,^config(/.*)?$,;
-	return 1 if       $x =~ m,^asm-generic$,;
-	return 0 if       $x =~ m,^asm-,;
-	return 0 if       $x =~ m,^asm/(mach|arch)-,;
+	return 0 if       $x =~ m,^arm/,;
+	return 0 if       $x =~ m,^ppc/,;
 	return 1;
 }
 
@@ -64,11 +56,7 @@ sub interesting_hdr_dirs
 sub we_want_hdr_file
 {
 	my ($z, $x) = @_;
-	return 0 if $x =~ m,^asm.*/asm-offsets.h$,;
-	return 0 if $x =~ m,^linux/autoconf.h$,;
-	return 0 if $x =~ m,^linux/compile.h$,;
-	return 0 if $x =~ m,^linux/compiler.h$,;
-	return 0 if $x =~ m,^linux/version.h$,;
+	return 0 if $x =~ m,/git-compat-util.h$,;
 	return 1;
 }
 
@@ -87,14 +75,8 @@ sub interesting_hdr_files
 sub we_want_src_dir
 {
 	my ($z, $x) = @_;
-	return 0 if       $x =~ m,^Documentation/,;
-	return 0 if       $x =~ m,^\.git/,;
-	return 0 if       $x =~ m,^include/,;
-	return 0 if       $x =~ m,^scripts/,;
-	return 0 if       $x =~ m,^\.tmp_versions/,;
-	return 0 if       $x =~ m,^usr/,;
-	return 1 unless   $x =~ m,^arch/,;
-	return 0 unless   $x =~ m,^arch/$z->{'arch'}(/.*)?$,;
+	return 0 if       $x =~ m,^arm/,;
+	return 0 if       $x =~ m,^ppc/,;
 	return 1;
 }
 
@@ -175,16 +157,16 @@ sub run
 
 	$t0 = new Benchmark;
 
-	print "process hdrs\n";
 	my $tree = $z->{'tree'};
-	chdir "$tree/include" || die "Bad tree: $tree";
+	chdir "$tree" || die "Bad tree: $tree";
+
+	print "process hdrs\n";
 	map {$z->gather($_)} map {$z->interesting_hdr_files($_)} $z->interesting_hdr_dirs;
 	$t1 = new Benchmark;
 	print "Took " . timestr(timediff($t1, $t0)) . " seconds\n";
 	$t0 = $t1;
 
 	print "process src\n";
-	chdir "$tree" || die "Bad tree: $tree";
 	map {$z->gather($_)} map {$z->interesting_src_files($_)} $z->interesting_src_dirs;
 	$t1 = new Benchmark;
 	print "Took " . timestr(timediff($t1, $t0)) . " seconds\n";
