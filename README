@@ -12,6 +12,8 @@ Configure your linux kernel and 'make prepare'.
 Adjust the Gather::Linux line near top of graph.pl.  Only
 tested on x86_64 so far.
 
+mkdir tmp
+
 ./graph.pl
   - do_it (this takes 30-120 seconds)
   - save_it
