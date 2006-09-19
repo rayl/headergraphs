@@ -72,13 +72,30 @@ sub find_potential_cutpoints
 
 	# ask the graph to scan the inclusion tree rooted at 'file' and return
 	# a list of nodes with 'many' or more incoming edges.  these are the potential
-	# cutpoints.  create a hash named 'm' to count the actual number of inclusions
-	# for each one.
-	my %m = map {$_ => 0} @{$z->{'graph'}->too_many($z->{'file'}, $z->{'many'})};
+	# cutpoints.  create a hash named 'm' to hold the set of nodes including
+	# these cutpoints.
+	my %m = map {$_ => []} @{$z->{'graph'}->too_many($z->{'file'}, $z->{'many'})};
 
 	# walk over every edge in the mesh incrementing the inclusion counter
 	# each time we see a potential cutpoint as the edge target.
-	map {$m{$_}++ if exists $m{$_}} map {keys %{$z->{'mesh'}->{$_}}} sort keys %{$z->{'mesh'}};
+	for my $source (keys %{$z->{'mesh'}})
+	  {
+		for my $target (keys %{$z->{'mesh'}->{$source}})
+		  {
+			if (exists $m{$target})
+			  {
+				push @{$m{$target}}, $source;
+			  }
+		  }
+	  }
+
+	# sort each potential cutpoint list by source unique tsize
+	my $g = $z->{'graph'};
+	for my $target (keys %m)
+	  {
+		my $x = $m{$target};
+		$m{$target} = [ sort {$g->unique_tsize($b) <=> $g->unique_tsize($a)} @{$x} ];
+	  }
 
 	# save the list of cutpoints and associated inclusion counts
 	$z->{'cuts'} = \%m;

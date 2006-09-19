@@ -60,36 +60,51 @@ sub backbone_color
 }
 
 #
-# Decide whether an edge to the target node should be snipped in order
-# to relax the graph.
+# Decide whether an edge to the target node should be snipped in
+# order to relax the graph.  if target is not a candidate for snipping, or if this is the
+# first time we're printing a snippable target node, then do not
+# snip the edge.  for snippable targets, this will bind the node
+# into the main tree instead of letting it possibly float off to
+# the right edge of the page.
 #
 sub should_snip
 {
-	my ($a, $target) = @_;
+	my ($a, $source, $target, $ghost) = @_;
 	my $cuts = $a->{'cuts'};
 
 	# we should not snip this edge unless the target has "too many"
 	# incoming edges
 	return 0 unless exists $cuts->{$target};
 
-	# we want to snip this edge unless it's important (haa a large unique
-	# tsize).  in that case, we'd like this "primary hierarchy" to remain
-	# contiguous on the graph
+	# this target has lots of incoming edges, but we always want the one
+	# with the largest unique tsize to reamin intact, no matter what.
+	# this avoids disconnected subtrees floating over to the right side
+	# of the page.
+	return 0 if $cuts->{$target}->[0] eq $source;
+
+	# this is one of the less important links to the target. we prefer to
+	# snip these edges unless the target is a part of the backbone.  in
+	# that case, we'd like this "primary hierarchy" to remain contiguous
+	# on the graph
 	my $weight = $a->{'graph'}->unique_tsize($target);
 	my $important = saturation($weight);
 	return 1 unless defined $important;
 
-	# this node is part of the "primary hierarchy", but only keep it contiguous
-	# if it has 1-3 incoming edges. otherwise, the graph gets too cluttered.
-	return 0 if $cuts->{$target} < 4;
+	# this node is part of the blue backbone.  if there are less than 3
+	# incoming edges, we want to keep things contiguous.
+	return 0 if scalar @{$cuts->{$target}} < 3;
 
-	# snip nodes in the primary hierarchy with lots of incoming edges
+	# the node is part of the backbone, but has too many incoming edges
+	# to keep everything contiguous while maintaining a clean layout.
+	# we know it's not the heaviest incoming edge, so check next one and
+	# keep it, snipping the rest.
+	return 0 if $cuts->{$target}->[1] eq $source;
 	return 1;
 }
 
 sub print_node
 {
-	my ($a, $node) = @_;
+	my ($a, $node, $ghost) = @_;
 
 	my $g = $a->{'graph'};
 	my $t = $g->total_tsize($a->{'file'})->{$node} || "?";
@@ -104,14 +119,12 @@ sub print_node
 
 
 	# if we are printing a node with many incoming edges...
-	elsif (should_snip($a, $node))
+	elsif (exists $a->{'cuts'}->{$node})
 	  {
-
-		# look up how many incoming edges we have
-		my $m = $a->{'cuts'}->{$node};
+		my $x = scalar @{$a->{'cuts'}->{$node}};
 
 		# print the node, mentioning how many times it is included
-		print "\t\"$node\" [label=\"<$m times>\\n$node\\n($n/$t)\"";
+		print "\t\"$node\" [label=\"<$x times>\\n$node\\n($n/$t)\"";
 
 
 		# if we have determined that this is a popular node with large unique tsize,
@@ -127,12 +140,15 @@ sub print_node
 		  }
 		print "];\n";
 
+		# look up how many ghosts we have to make
+		my $m = $ghost->{$node};
+
 		# print the array of ghosts for this node.
-		for my $ee (2..$m)
+		for my $ee (1..$m)
 		  {
 
 			# replicate the information from the main node
-			print "\t\"$node/$ee\" [label=\"<$m times>\\n$node\\n($n/$t)\", style=dashed";
+			print "\t\"$node/$ee\" [label=\"<$x times>\\n$node\\n($n/$t)\", style=dashed";
 
 			# if this is a popular node with large unique tsize, draw it as a dark dashed
 			# octagon so it's more visible, without being intrusive.  popular nodes with
@@ -163,12 +179,12 @@ sub print_node
 #
 sub print_nodes
 {
-	my ($a) = @_;
+	my ($a, $ghost) = @_;
 
 	# walk over each node in the mesh
 	for my $node (keys %{$a->{'nodelist'}})
 	  {
-		print_node($a, $node);
+		print_node($a, $node, $ghost);
 	  }
 }
 
@@ -200,29 +216,20 @@ sub print_edge
 	my $weight = $a->{'graph'}->unique_tsize($target);
 	my $length = edge_length($weight);
 
-	# check whether edges to this target should be snipped or not.
-	if (should_snip($a, $target))
+	# check whether this edge to the target node should be snipped or not.
+	if (should_snip($a, $source, $target, $ghost))
 	  {
 		# increment the number of ghost nodes we have generated for
 		# this snipped node
 		$ghost->{$target}++;
-	  }
 
-	# decide whether to actually snip this particular edge or not.
-	if (($ghost->{$target} || 1) < 2)
-	  {
-		# if target is not a candidate for snipping, or if this is the
-		# first time we're printing a snippable target node, then do not
-		# snip the edge.  for snippable targets, this will bind the node
-		# into the main tree instead of letting it possibly float off to
-		# the right edge of the page.
-		print "\t\"$source\" -> \"$target\" [len=$length];\n";
+		# snip the edge by referring to a ghost node
+		print "\t\"$source\" -> \"$target/" . $ghost->{$target} . "\" [len=$length];\n";
 	  }
 	else
 	  {
-		# if we've already printed the target node once, snip the edge by
-		# generating a unique ghost node for the snipped edge to point at
-		print "\t\"$source\" -> \"$target/" . $ghost->{$target} . "\" [len=$length];\n";
+		# if not, refer directly to the actual node.
+		print "\t\"$source\" -> \"$target\" [len=$length];\n";
 	  }
 }
 
@@ -231,10 +238,7 @@ sub print_edge
 #
 sub print_edges
 {
-	my ($a) = @_;
-
-	# a hash used to uniquely number ghost nodes
-	my %ghost;
+	my ($a, $ghost) = @_;
 
 	# bind a local name to the analysis mesh object
 	my $mesh = $a->{'mesh'};
@@ -246,7 +250,7 @@ sub print_edges
 		for my $target (keys %{$mesh->{$source}})
 		  {
 			# process the edge from source to target
-			print_edge($a, $source, $target, \%ghost);
+			print_edge($a, $source, $target, $ghost);
 		  }
 	  }
 }
@@ -289,9 +293,10 @@ sub print_gfoot
 sub graph2
 {
 	my ($a) = @_;
+	my %ghost;
 	print_ghead($a);
-	print_edges($a);
-	print_nodes($a);
+	print_edges($a, \%ghost);
+	print_nodes($a, \%ghost);
 	print_gfoot($a);
 }
 
