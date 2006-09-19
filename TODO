@@ -1,16 +1,5 @@
 
-- remove double inclusions
-
-- resolve circular inclusions
-
-- move __str() and str() into <linux/c.h>
-
-- can we remove seqlock from asm/vsyscall.h?
-
-
 - sort children by inclusion order
-- merge disconnected tmany comps
 - highlight a particular node
 - report on tsizes for entire graph
-
 
