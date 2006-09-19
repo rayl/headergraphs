@@ -140,7 +140,8 @@ sub help
 EOF
 }
 
-#load_it;
+load_it;
+x "linux/sched.h";
 #reportb "linux/spinlock.h", -1, 0, 2;
 repl;
 

@@ -10,8 +10,8 @@ package Dot;
 
 #
 # Nodes are colored red or blue if they have sufficiently
-# large subtrees.  The saturation of the color rises with
-# increasing subtree size.
+# large unique tsize.  The saturation of the color rises with
+# increasing unique tsize.
 #
 sub saturation
 {
@@ -24,7 +24,7 @@ sub saturation
 }
 
 #
-# Problem nodes (large subtrees included many times) have
+# Problem nodes (large unique tsize and included many times) have
 # a reddish color.
 #
 sub problem_color
@@ -56,8 +56,8 @@ sub should_snip
 	# incoming edges
 	return 0 unless exists $cuts->{$target};
 
-	# we want to snip this edge unless it's part of an important (large)
-	# subtree.  in that case, we'd like this "primary hierarchy" to remain
+	# we want to snip this edge unless it's important (haa a large unique
+	# tsize).  in that case, we'd like this "primary hierarchy" to remain
 	# contiguous on the graph
 	my $weight = $a->{'graph'}->unique_tsize($target);
 	my $important = saturation($weight);
@@ -99,7 +99,7 @@ sub print_node
 		print "\t\"$node\" [label=\"<$m times>\\n$node\\n($n/$t)\"";
 
 
-		# if we have determined that this node is both heavy and popular,
+		# if we have determined that this is a popular node with large unique tsize,
 		# print it as a red octagon, otherwise just flag it as a yellow diamond
 		if (defined $c)
 		  {
@@ -119,9 +119,9 @@ sub print_node
 			# replicate the information from the main node
 			print "\t\"$node/$ee\" [label=\"<$m times>\\n$node\\n($n/$t)\", style=dashed";
 
-			# if this is a heavy and popular node, draw it as a dark dashed octagon so
-			# it's more visible, without being intrusive.  regular popular nodes just
-			# show up as dim dashed circles.
+			# if this is a popular node with large unique tsize, draw it as a dark dashed
+			# octagon so it's more visible, without being intrusive.  popular nodes with
+			# small unique tsizes just show up as dim dashed circles.
 			if (defined $c)
 			  {
 				print ", shape=octagon, fontcolor=\"#000000\", color=\"#000000\"];\n";
@@ -158,10 +158,10 @@ sub print_nodes
 }
 
 #
-# Decide how long an edge should be, based on how large is the subtree
-# rooted at the target of the edge.  Edges pointing to relatively small
-# subtrees can be long, while edges pointing to large subtrees will be
-# short.  this is useful for the radial graph layout.  it helps the "heavy"
+# Decide how long an edge should be, based on the unique tsize.
+# Edges pointing to nodes with small unique tsizes can be long, while
+# edges pointing to nodes with large unique tsizes will be short.
+# this is useful for the radial graph layout.  it helps the "heavy"
 # nodes with large subtrees to cluster near the center of the spider web.
 #
 sub edge_length
@@ -181,8 +181,7 @@ sub print_edge
 {
 	my ($a, $source, $target, $ghost) = @_;
 
-	# pick a length for this edge, based on the size of the subtree
-	# rooted at the target node.
+	# pick a length for this edge, based on unique tsize of the target node.
 	my $weight = $a->{'graph'}->unique_tsize($target);
 	my $length = edge_length($weight);
 
