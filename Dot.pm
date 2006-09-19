@@ -79,13 +79,12 @@ sub should_snip
 	my $important = saturation($weight);
 	return 1 unless defined $important;
 
-	# this node is part of the "primary hierarchy", but if it has more
-	# than 4 incoming edges, we'll snip it anyway.  otherwise, the graph
-	# gets too cluttered.
-	return 1 unless $cuts->{$target} < 5;
+	# this node is part of the "primary hierarchy", but only keep it contiguous
+	# if it has 1-3 incoming edges. otherwise, the graph gets too cluttered.
+	return 0 if $cuts->{$target} < 4;
 
-	# do not snip nodes in the primary hierarchy with few incoming edges
-	return 0;
+	# snip nodes in the primary hierarchy with lots of incoming edges
+	return 1;
 }
 
 sub print_node
