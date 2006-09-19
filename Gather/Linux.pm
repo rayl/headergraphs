@@ -21,7 +21,7 @@ sub new
         my $z = bless {}, ref $type || $type;
 
 	# the location of the linux kernel tree
-	$z->{'tree'} = "/home/rayl/proj/linux-headers";
+	$z->{'tree'} = "/opt/BR/src/linux";
 
 	# the specific asm-* directories of interest.
 	$z->{'arch'} =
