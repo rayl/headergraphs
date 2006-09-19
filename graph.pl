@@ -7,16 +7,20 @@ use lib qw(.);
 
 use Data::Dumper;
 
+use Gather::Linux;
+use Gather::Git;
 use Graph;
 use Analysis;
 use Dot;
-use Gather::Linux;
-use Gather::Git;
-use Report;
 
-# the gatherer which parses source files
-#my $gatherer = new Gather::Git("/home/rayl/proj/git");
+##############################################################################
+#
+# Create the gatherer which parses source files
+#
 my $gatherer = new Gather::Linux("/opt/BR/src/linux", "x86_64");
+#my $gatherer = new Gather::Git("/home/rayl/proj/git");
+#
+##############################################################################
 
 # the raw inclusion information
 my $graph;
@@ -29,28 +33,29 @@ sub do_it
 
 sub save_it
 {
-	unless (open D, ">DUMP.bin")
+	if (open D, ">DUMP.bin")
+	  {
+		print D Data::Dumper->Dump([$graph], [qw(graph)]);
+		close D;
+	  }
+	else
 	  {
 		print "Failed to open DUMP.bin\n";
-		return;
 	  }
-
-	print D Data::Dumper->Dump([$graph], [qw(graph)]);
-
-	close D;
 }
 
 sub load_it
 {
-	unless (open D, "<DUMP.bin")
+	if (open D, "<DUMP.bin")
+	  {
+		my $data = join '', <D>;
+ 		eval $data;
+		close D;
+	  }
+	else
 	  {
 		print "Failed to open DUMP.bin\n";
-		return;
 	  }
-
-	my $data = join '', <D>;
- 	eval $data;
-	close D;
 }
 
 sub repl
@@ -72,22 +77,6 @@ sub repl
 	print "\n\n";
 }
 
-sub reporta
-{
-	Report::report1(Analysis->new($graph, @_));
-}
-
-sub reportb
-{
-	Report::report2(Analysis->new($graph, @_));
-}
-
-sub graph1
-{
-	# my ($file, $clevel, $plevel, $count) = @_;
-	Dot::graph2(Analysis->new($graph, @_));
-}
-
 sub graph
 {
 	# my ($file, $clevel, $plevel, $count) = @_;
@@ -97,13 +86,14 @@ sub graph
 	$o =~ s/^/tmp\//;
 	open O, ">$o" || return;
 	my $stdout = select O;
-	graph1(@_);
+	Dot::graph2(Analysis->new($graph, (@_)));
 	select $stdout;
 	$o;
 }
 
 sub show
 {
+	# my ($file, $clevel, $plevel, $count) = @_;
 	my $dot = graph @_;
 	my $ps = $dot;
 	$ps =~ s/\.dot$/.ps/;
@@ -114,19 +104,9 @@ sub show
 	0;
 }
 
-sub world
-{
-	map { show($_, -1, 0, 2) } $graph->nodes;
-}
-
 sub x
 {
 	show($_[0], -1, 0, 2);
-}
-
-sub l
-{
-	load_it
 }
 
 sub help
@@ -135,15 +115,13 @@ sub help
   do_it
   save_it
   load_it
-  graph file,out,in
-  show file,out,in
-  report
-  trans
+  graph file,out,in,cut
+  show file,out,in,cut
+  x file
 EOF
 }
 
-load_it;
-x "linux/sched.h";
-#reportb "linux/spinlock.h", -1, 0, 2;
+#load_it;
+#x "linux/sched.h";
 repl;
 
