@@ -69,7 +69,7 @@ sub backbone_color
 #
 sub should_snip
 {
-	my ($a, $source, $target, $ghost) = @_;
+	my ($a, $source, $target) = @_;
 	my $cuts = $a->{'cuts'};
 
 	# we should not snip this edge unless the target has "too many"
@@ -110,11 +110,31 @@ sub print_node
 	my $t = $g->total_tsize($a->{'file'})->{$node} || "?";
 	my $n = $g->unique_tsize($node);
 	my $c = saturation($n);
+	my $listing = "";
+	my $shape;
 
-	# if we are printing the root node for this analysis, make it into a yellow house shape
+	# if we are printing a node with trimmed outgoing edges
+	if (exists $ghost->{$node})
+	  {
+		# these guys get printed as boxes
+		$shape = "box";
+
+		# generate the list of snipped headers
+		$listing = "\\n~\\n";
+		for my $target (@{$ghost->{$node}})
+		  {
+			my $xx = scalar @{$a->{'cuts'}->{$target}};
+			my $tt = $g->total_tsize($a->{'file'})->{$target} || "?";
+			my $nn = $g->unique_tsize($target);
+			$listing .= "$target $nn - $tt - $xx\\n";
+		  }
+	  }
+
+	# if we are printing the root node for this analysis, make it into an orange house shape
 	if ($node eq $a->{'file'})
 	  {
-		print "\t\"$node\" [label=\"$node\\n($n/$t)\", shape=house, color=\"#0000ff\", fillcolor=\"#ffff00\", style=filled];\n";
+		$shape ||= "house";
+		print "\t\"$node\" [label=\"$node\\n$n - $t$listing\", shape=$shape, color=\"#000000\", fillcolor=\"#ff8000\", style=filled];\n";
 	  }
 
 
@@ -123,54 +143,25 @@ sub print_node
 	  {
 		my $x = scalar @{$a->{'cuts'}->{$node}};
 
-		# print the node, mentioning how many times it is included
-		print "\t\"$node\" [label=\"<$x times>\\n$node\\n($n/$t)\"";
-
+		$shape ||= "ellipse";
 
 		# if we have determined that this is a popular node with large unique tsize,
-		# print it as a red octagon, otherwise just flag it as a yellow diamond
-		if (defined $c)
-		  {
-			my $o = problem_color($c);
-			print ", shape=octagon, fillcolor=\"$o\", style=filled";
-		  }
-		else
-		  {
-			print ", shape=diamond, fillcolor=\"#ffff80\", style=filled";
-		  }
-		print "];\n";
+		# color it red.  popular nodeswith small tsize are yellow
+		my $o = (defined $c) ? problem_color($c) : "#ffffb0";
 
-		# look up how many ghosts we have to make
-		my $m = $ghost->{$node};
-
-		# print the array of ghosts for this node.
-		for my $ee (1..$m)
-		  {
-
-			# replicate the information from the main node
-			print "\t\"$node/$ee\" [label=\"<$x times>\\n$node\\n($n/$t)\", style=dashed";
-
-			# if this is a popular node with large unique tsize, draw it as a dark dashed
-			# octagon so it's more visible, without being intrusive.  popular nodes with
-			# small unique tsizes just show up as dim dashed circles.
-			if (defined $c)
-			  {
-				print ", shape=octagon, fontcolor=\"#000000\", color=\"#000000\"];\n";
-			  }
-			else
-			  {
-				print ", fontcolor=\"#c0c0c0\", color=\"#c0c0c0\"];\n";
-			  }
-		  }
+		# print the node, mentioning how many times it is included
+		print "\t\"$node\" [label=\"$node\\n$n - $t - $x$listing\",shape=$shape,fillcolor=\"$o\",style=filled];\n";
 	  }
 
 	# if we are printing an ordinary node
 	else
 	  {
-		print "\t\"$node\" [label=\"$node\\n($n/$t)\"";
-		my $b = backbone_color($c);
-		print ", fillcolor=\"$b\", style=filled" if defined $b;
-		print "];\n";
+		$shape ||= "ellipse";
+
+		my $b = (defined $c) ? backbone_color($c) : "#f0fff0";
+
+		# print the node
+		print "\t\"$node\" [label=\"$node\\n$n - $t$listing\",shape=$shape,fillcolor=\"$b\",style=filled];\n";
 	  }
 }
 
@@ -217,14 +208,11 @@ sub print_edge
 	my $length = edge_length($weight);
 
 	# check whether this edge to the target node should be snipped or not.
-	if (should_snip($a, $source, $target, $ghost))
+	if (should_snip($a, $source, $target))
 	  {
-		# increment the number of ghost nodes we have generated for
-		# this snipped node
-		$ghost->{$target}++;
-
-		# snip the edge by referring to a ghost node
-		print "\t\"$source\" -> \"$target/" . $ghost->{$target} . "\" [len=$length];\n";
+		# add target to the cluster for this source
+		$ghost->{$source} ||= [];
+		push @{$ghost->{$source}}, $target;
 	  }
 	else
 	  {
