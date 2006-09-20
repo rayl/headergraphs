@@ -44,34 +44,36 @@ total tsize
   Doing that will tend to slightly increase the unique tsize while
   drastically lowering the total tsize.
 
+backbone
+  A contiguous subgraph starting from the root and composed of the
+  nodes with "large" unique tsizes, for some arbitrary value of large.  
+  Any child nodes below this size are considered "regular headers"
+  and are not considered to be part of the backbone. "large" is
+  currently hardcoded to a value useful for the Linux kernel headers.
 
-   
+ 
 Description
 -----------
 
-Nodes in the graph repesent files, edges represent inclusions.
+Nodes in the graph repesent files, edges represent inclusions.  To help
+relax the graph and clean up the layout, some child edges may be
+snipped.  The node shapes and labels indicate where and when this
+has occurred.
 
 
 Node Shapes:
 
   The house-shaped pentagon is the root of the inclusion tree.
 
-  Solid circles are normal inclusion targets.
+  Ellipses are normal header files.
 
-  Diamonds and solid octagons are popular inclusion targets whose
-  incoming edges have been snipped to relax the graph.
-
-  Dashed circles are the snipped edges which originally pointed
-  to a diamond.
-
-  Dashed octagons are the snipped edges which originally pointed
-  to an octagon.
-
-  Dashed nodes are also referred to as the "ghosts" of diamonds and
-  octagons.
+  Boxes are header files which have had one or more links to child
+  nodes snipped in order to relax the graph.
 
 
 Node Colors:
+
+  Orange represents the root node of the graph.
 
   Blue represents the "primary inclusion hierarchy".  In other words,
   the inclusion hierarchy formed by the files with large unique tsizes.
@@ -82,18 +84,23 @@ Node Colors:
 
   Red represents a popular inclusion target with a large unique tsize.
 
-  Dark grey represents normal header files.
+  Pale green represents normal header files.
 
-  The more saturated a red or blue colored object is, the large the
-  unique tsize.
+  The more saturated a red, yellow or blue colored object is, the large
+  the unique tsize.
 
 
 Node Labels:
 
-  Unsnipped nodes have the file name with the unique and total tsizes in
-  round braces.
+  All nodes are labelled with the file name. The unique and total
+  tsizes are placed underneath the name and separated by a dash.
 
-  Snipped nodes also include the number of incoming edges (the number of
-  times the file was included) in diamond braces.
+  Nodes which have had some incoming edges snipped have a third number
+  indicating the total number of parents for that file, including any
+  incoming edges that weren't actually snipped.
 
+  Nodes with outgoing edges snipped also include a list of the children
+  who have been detached.  The information for each child (name, unique
+  tsize, total tsize, and parent count) is placed on a single line per
+  child.
 
