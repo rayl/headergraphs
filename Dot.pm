@@ -129,7 +129,7 @@ sub should_snip
 
 sub print_node
 {
-	my ($a, $node, $ghost) = @_;
+	my ($a, $node, $snipped) = @_;
 
 	my $g = $a->{'graph'};
 	my $t = $g->total_tsize($a->{'file'})->{$node} || "?";
@@ -138,14 +138,14 @@ sub print_node
 	my $shape;
 
 	# if we are printing a node with trimmed outgoing edges
-	if (exists $ghost->{$node})
+	if (exists $snipped->{$node})
 	  {
 		# these guys get printed as boxes
 		$shape = "box";
 
 		# generate the list of snipped headers
 		$listing = "\\n~\\n";
-		for my $target (@{$ghost->{$node}})
+		for my $target (@{$snipped->{$node}})
 		  {
 			my $xx = scalar @{$a->{'cuts'}->{$target}};
 			my $tt = $g->total_tsize($a->{'file'})->{$target} || "?";
@@ -194,12 +194,12 @@ sub print_node
 #
 sub print_nodes
 {
-	my ($a, $ghost) = @_;
+	my ($a, $snipped) = @_;
 
 	# walk over each node in the mesh
 	for my $node (keys %{$a->{'nodelist'}})
 	  {
-		print_node($a, $node, $ghost);
+		print_node($a, $node, $snipped);
 	  }
 }
 
@@ -225,7 +225,7 @@ sub edge_length
 #
 sub print_edge
 {
-	my ($a, $source, $target, $ghost) = @_;
+	my ($a, $source, $target, $snipped) = @_;
 
 	# pick a length for this edge, based on unique tsize of the target node.
 	my $weight = $a->{'graph'}->unique_tsize($target);
@@ -235,8 +235,8 @@ sub print_edge
 	if (should_snip($a, $source, $target))
 	  {
 		# add target to the cluster for this source
-		$ghost->{$source} ||= [];
-		push @{$ghost->{$source}}, $target;
+		$snipped->{$source} ||= [];
+		push @{$snipped->{$source}}, $target;
 	  }
 	else
 	  {
@@ -250,7 +250,7 @@ sub print_edge
 #
 sub print_edges
 {
-	my ($a, $ghost) = @_;
+	my ($a, $snipped) = @_;
 
 	# bind a local name to the analysis mesh object
 	my $mesh = $a->{'mesh'};
@@ -262,7 +262,7 @@ sub print_edges
 		for my $target (keys %{$mesh->{$source}})
 		  {
 			# process the edge from source to target
-			print_edge($a, $source, $target, $ghost);
+			print_edge($a, $source, $target, $snipped);
 		  }
 	  }
 }
@@ -305,10 +305,10 @@ sub print_gfoot
 sub graph2
 {
 	my ($a) = @_;
-	my %ghost;
+	my %snipped;
 	print_ghead($a);
-	print_edges($a, \%ghost);
-	print_nodes($a, \%ghost);
+	print_edges($a, \%snipped);
+	print_nodes($a, \%snipped);
 	print_gfoot($a);
 }
 
