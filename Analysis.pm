@@ -50,9 +50,9 @@ sub collect_parents
 	return if $n == 0;
 	return if $visiting->{$file};
 	$visiting->{$file} = 1;
-	$z->{'nodelist'}->{$file} = 1;
 	for my $e ($z->{'graph'}->parents($file))
 	  {
+		$z->{'nodelist'}->{$e} = 1;
 		$z->{'mesh'}->{$e} ||= {};
 		next if $z->{'mesh'}->{$e}->{$file};
 		$z->{'mesh'}->{$e}->{$file} = 1;
