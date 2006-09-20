@@ -87,11 +87,7 @@ sub backbone_color
 
 #
 # Decide whether an edge to the target node should be snipped in
-# order to relax the graph.  if target is not a candidate for snipping, or if this is the
-# first time we're printing a snippable target node, then do not
-# snip the edge.  for snippable targets, this will bind the node
-# into the main tree instead of letting it possibly float off to
-# the right edge of the page.
+# order to relax the graph.
 #
 sub should_snip
 {
@@ -140,7 +136,6 @@ sub print_node
 	# if we are printing a node with trimmed outgoing edges
 	if (exists $snipped->{$node})
 	  {
-		# these guys get printed as boxes
 		$shape = "box";
 
 		# generate the list of snipped headers
@@ -169,8 +164,6 @@ sub print_node
 
 		$shape ||= "ellipse";
 
-		# if we have determined that this is a popular node with large unique tsize,
-		# color it red.  popular nodeswith small tsize are yellow
 		my $o = target_color($n);
 
 		# print the node, mentioning how many times it is included
@@ -196,7 +189,6 @@ sub print_nodes
 {
 	my ($a, $snipped) = @_;
 
-	# walk over each node in the mesh
 	for my $node (keys %{$a->{'nodelist'}})
 	  {
 		print_node($a, $node, $snipped);
@@ -234,13 +226,13 @@ sub print_edge
 	# check whether this edge to the target node should be snipped or not.
 	if (should_snip($a, $source, $target))
 	  {
-		# add target to the cluster for this source
+		# if so, add target to the cluster for this source
 		$snipped->{$source} ||= [];
 		push @{$snipped->{$source}}, $target;
 	  }
 	else
 	  {
-		# if not, refer directly to the actual node.
+		# if not, generate the edge
 		print "\t\"$source\" -> \"$target\" [len=$length];\n";
 	  }
 }
@@ -251,8 +243,6 @@ sub print_edge
 sub print_edges
 {
 	my ($a, $snipped) = @_;
-
-	# bind a local name to the analysis mesh object
 	my $mesh = $a->{'mesh'};
 
 	# walk over each source node
@@ -261,7 +251,6 @@ sub print_edges
 		# walk over each target node for this source
 		for my $target (keys %{$mesh->{$source}})
 		  {
-			# process the edge from source to target
 			print_edge($a, $source, $target, $snipped);
 		  }
 	  }
@@ -269,9 +258,6 @@ sub print_edges
 
 #
 # Print the graph header.
-#
-# Open a directed graph object and set up the graph
-# options.
 #
 sub print_ghead
 {
@@ -286,8 +272,6 @@ sub print_ghead
 #
 # Print the graph footer.
 #
-# Close off the digraph object.
-#
 sub print_gfoot
 {
 	my ($a) = @_;
@@ -295,8 +279,7 @@ sub print_gfoot
 }
 
 #
-# Generate a dot graph in four sections:  A header, followed
-# by all edges, then all nodes, and finally a footer.
+# Generate a dot graph.
 #
 # The input is an analysis object, which has extracted some
 # useful bits of information about the topology of an
