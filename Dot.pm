@@ -25,38 +25,64 @@ use warnings;
 package Dot;
 
 #
-# Nodes are colored red or blue if they have sufficiently
+# a set of unique tsizes for "backbone" and "heavy" determination
+# and for color saturation calculation.
+#
+my @threshold = (25, 50, 100, 150);
+
+#
+# Nodes are colored yellow, red or blue if they have sufficiently
 # large unique tsize.  The saturation of the color rises with
 # increasing unique tsize.
 #
 sub saturation
 {
 	my ($weight) = @_;
-	if     ($weight <  25) { undef }
-	elsif  ($weight <  50) { "d0" }
-	elsif  ($weight < 100) { "80" }
-	elsif  ($weight < 150) { "40" }
-	else              { "00" }
+	if     ($weight < $threshold[0]) { "c0" }
+	elsif  ($weight < $threshold[1]) { "90" }
+	elsif  ($weight < $threshold[2]) { "60" }
+	elsif  ($weight < $threshold[3]) { "30" }
+	else                             { "00" }
 }
 
 #
-# Problem nodes (large unique tsize and included many times) have
-# a reddish color.
+# Decide whether a node is "backbone" or not, based on the unique
+# tsize.
 #
-sub problem_color
+sub backbone
 {
-	my ($c) = @_;
-	"#ff${c}${c}" if defined $c;
+	my ($weight) = @_;
+	$weight >= $threshold[0];
 }
 
 #
-# Backbone nodes (in the "primary inclusion hierarchy") have
-# a bluish color.
+# Decide whether a node is "heavy" or not, based on the unique
+# tsize.
+#
+sub heavy
+{
+	my ($weight) = @_;
+	$weight >= $threshold[2];
+}
+
+#
+# Target nodes (included many times) have a reddish or yellowish color.
+#
+sub target_color
+{
+	my ($weight) = @_;
+	my $c = saturation($weight);
+	heavy($weight) ? "#ff${c}${c}" : "#ffff${c}";
+}
+
+#
+# Backbone nodes have a bluish color, non-backbone are green.
 #
 sub backbone_color
 {
-	my ($c) = @_;
-	"#${c}${c}ff" if defined $c;
+	my ($weight) = @_;
+	my $c = saturation($weight);
+	backbone($weight) ? "#${c}${c}ff" : "#${c}ff${c}";
 }
 
 #
@@ -87,8 +113,7 @@ sub should_snip
 	# that case, we'd like this "primary hierarchy" to remain contiguous
 	# on the graph
 	my $weight = $a->{'graph'}->unique_tsize($target);
-	my $important = saturation($weight);
-	return 1 unless defined $important;
+	return 1 unless backbone($weight);
 
 	# this node is part of the blue backbone.  if there are less than 3
 	# incoming edges, we want to keep things contiguous.
@@ -109,7 +134,6 @@ sub print_node
 	my $g = $a->{'graph'};
 	my $t = $g->total_tsize($a->{'file'})->{$node} || "?";
 	my $n = $g->unique_tsize($node);
-	my $c = saturation($n);
 	my $listing = "";
 	my $shape;
 
@@ -147,7 +171,7 @@ sub print_node
 
 		# if we have determined that this is a popular node with large unique tsize,
 		# color it red.  popular nodeswith small tsize are yellow
-		my $o = (defined $c) ? problem_color($c) : "#ffffb0";
+		my $o = target_color($n);
 
 		# print the node, mentioning how many times it is included
 		print "\t\"$node\" [label=\"$node\\n$n - $t - $x$listing\",shape=$shape,fillcolor=\"$o\",style=filled];\n";
@@ -158,7 +182,7 @@ sub print_node
 	  {
 		$shape ||= "ellipse";
 
-		my $b = (defined $c) ? backbone_color($c) : "#f0fff0";
+		my $b = backbone_color($n);
 
 		# print the node
 		print "\t\"$node\" [label=\"$node\\n$n - $t$listing\",shape=$shape,fillcolor=\"$b\",style=filled];\n";

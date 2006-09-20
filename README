@@ -55,13 +55,14 @@ backbone
 Description
 -----------
 
-Nodes in the graph repesent files, edges represent inclusions.  To help
-relax the graph and clean up the layout, some child edges may be
-snipped.  The node shapes and labels indicate where and when this
-has occurred.
+Nodes in the graph repesent files, edges represent inclusions.
 
 
 Node Shapes:
+
+To help relax the graph and clean up the layout, some child edges
+may be snipped.  The node shapes and labels indicate where and when
+this has occurred.
 
   The house-shaped pentagon is the root of the inclusion tree.
 
@@ -71,7 +72,10 @@ Node Shapes:
   nodes snipped in order to relax the graph.
 
 
+
 Node Colors:
+
+Different colors are used to flag interesting nodes.
 
   Orange represents the root node of the graph.
 
@@ -86,8 +90,16 @@ Node Colors:
 
   Pale green represents normal header files.
 
-  The more saturated a red, yellow or blue colored object is, the large
-  the unique tsize.
+The more saturated a red, yellow or blue colored object is, the larger
+the unique tsize.
+
+Conceptually, colors are applied in the following order:
+
+  - The entire graph is painted green.
+  - Backbone nodes are then painted blue.
+  - Cutpoint targets are painted yellow.
+  - Cutpoint targets with very large tsizes are painted red.
+  - Finally, the root node is painted orange.
 
 
 Node Labels:
