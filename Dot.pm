@@ -130,56 +130,55 @@ sub print_node
 	my $g = $a->{'graph'};
 	my $t = $g->total_tsize($a->{'file'})->{$node} || "?";
 	my $n = $g->unique_tsize($node);
-	my $listing = "";
-	my $shape;
 
-	# if we are printing a node with trimmed outgoing edges
+	my $snips = "";
+	my $shape;
+	my $count = "$n - $t";
+	my $fill;
+
 	if (exists $snipped->{$node})
 	  {
+		# we are printing a node with trimmed outgoing edges
 		$shape = "box";
 
 		# generate the list of snipped headers
-		$listing = "\\n~\\n";
+		$snips = "\\n~\\n";
 		for my $target (@{$snipped->{$node}})
 		  {
-			my $xx = scalar @{$a->{'cuts'}->{$target}};
-			my $tt = $g->total_tsize($a->{'file'})->{$target} || "?";
 			my $nn = $g->unique_tsize($target);
-			$listing .= "$target $nn - $tt - $xx\\n";
+			my $tt = $g->total_tsize($a->{'file'})->{$target} || "?";
+			my $xx = scalar @{$a->{'cuts'}->{$target}};
+			$snips .= "$target $nn - $tt - $xx\\n";
 		  }
 	  }
 
-	# if we are printing the root node for this analysis, make it into an orange house shape
 	if ($node eq $a->{'file'})
 	  {
+		# we are printing the root node
 		$shape ||= "house";
-		print "\t\"$node\" [label=\"$node\\n$n - $t$listing\", shape=$shape, color=\"#000000\", fillcolor=\"#ff8000\", style=filled];\n";
+		$fill = "#ff8000";
 	  }
 
 
-	# if we are printing a node with many incoming edges...
 	elsif (exists $a->{'cuts'}->{$node})
 	  {
-		my $x = scalar @{$a->{'cuts'}->{$node}};
-
+		# we are printing a node with many incoming edges...
 		$shape ||= "ellipse";
+		$fill = target_color($n);
 
-		my $o = target_color($n);
-
-		# print the node, mentioning how many times it is included
-		print "\t\"$node\" [label=\"$node\\n$n - $t - $x$listing\",shape=$shape,fillcolor=\"$o\",style=filled];\n";
+		my $x = scalar @{$a->{'cuts'}->{$node}};
+		$count .= " - $x";
 	  }
 
-	# if we are printing an ordinary node
 	else
 	  {
+		# we are printing an ordinary node
 		$shape ||= "ellipse";
-
-		my $b = backbone_color($n);
-
-		# print the node
-		print "\t\"$node\" [label=\"$node\\n$n - $t$listing\",shape=$shape,fillcolor=\"$b\",style=filled];\n";
+		$fill = backbone_color($n);
 	  }
+
+	# generate the node
+	print "\t\"$node\" [label=\"${node}\\n${count}${snips}\",shape=${shape},fillcolor=\"${fill}\",style=filled];\n";
 }
 
 #
