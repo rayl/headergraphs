@@ -117,7 +117,7 @@ sub show
 	print "Running dot...\n";
 	system "dot", "-Tpng", "-o", $png, $dot;
 	print "Displaying graph...\n";
-	system "gwenview", $png;
+	system "gwenview", "-f", $png;
 	0;
 }
 
