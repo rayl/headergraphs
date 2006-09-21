@@ -98,11 +98,16 @@ sub should_snip
 	# incoming edges
 	return 0 unless exists $cuts->{$target};
 
+	# we know that there are more then one incoming edges, so figure out
+	# how many there are
+	my $n = scalar @{$cuts->{$target}};
+
 	# this target has lots of incoming edges, but we always want the one
-	# with the largest unique tsize to reamin intact, no matter what.
+	# with the smallest unique tsize to reamin intact, no matter what.
 	# this avoids disconnected subtrees floating over to the right side
 	# of the page.
-	return 0 if $cuts->{$target}->[0] eq $source;
+	return 0 if $cuts->{$target}->[$n-1] eq $source;
+	#return 0 if $cuts->{$target}->[0] eq $source;
 
 	# this is one of the less important links to the target. we prefer to
 	# snip these edges unless the target is a part of the backbone.  in
@@ -117,9 +122,10 @@ sub should_snip
 
 	# the node is part of the backbone, but has too many incoming edges
 	# to keep everything contiguous while maintaining a clean layout.
-	# we know it's not the heaviest incoming edge, so check next one and
+	# we know it's not the lightest incoming edge, so check next one and
 	# keep it, snipping the rest.
-	return 0 if $cuts->{$target}->[1] eq $source;
+	return 0 if $cuts->{$target}->[$n-2] eq $source;
+	#return 0 if $cuts->{$target}->[1] eq $source;
 	return 1;
 }
 
@@ -152,15 +158,7 @@ sub print_node
 		  }
 	  }
 
-	if ($node eq $a->{'file'})
-	  {
-		# we are printing the root node
-		$shape ||= "house";
-		$fill = "#ff8000";
-	  }
-
-
-	elsif (exists $a->{'cuts'}->{$node})
+	if (exists $a->{'cuts'}->{$node})
 	  {
 		# we are printing a node with many incoming edges...
 		$shape ||= "ellipse";
@@ -182,7 +180,7 @@ sub print_node
 }
 
 #
-# Print all nodes.
+# Print all nodes except root.
 #
 sub print_nodes
 {
@@ -190,7 +188,36 @@ sub print_nodes
 
 	for my $node (keys %{$a->{'nodelist'}})
 	  {
-		print_node($a, $node, $snipped);
+		if ($node ne $a->{'file'})
+		  {
+			print_node($a, $node, $snipped);
+		  }
+	  }
+}
+
+#
+# Print the root node(s).
+#
+sub print_root
+{
+	my ($a, $roots) = @_;
+
+	my $node = $a->{'file'};
+
+	my $g = $a->{'graph'};
+	my $t = $g->total_tsize($a->{'file'})->{$node} || "?";
+	my $n = $g->unique_tsize($node);
+
+	my $snips = "";
+	my $count = "$n - $t";
+	my $shape = "house";
+	my $fill = "#ff8000";
+
+	print "\t\"$node\" [label=\"${node}\\n${count}${snips}\",shape=${shape},fillcolor=\"${fill}\",style=filled];\n";
+
+	for (; $roots != 0; $roots--)
+	  {
+		print "\t\"$node/$roots\" [label=\"*\",shape=circle,fillcolor=\"#ff8000\",style=filled];\n";
 	  }
 }
 
@@ -216,14 +243,22 @@ sub edge_length
 #
 sub print_edge
 {
-	my ($a, $source, $target, $snipped) = @_;
+	my ($a, $source, $target, $snipped, $roots) = @_;
 
 	# pick a length for this edge, based on unique tsize of the target node.
 	my $weight = $a->{'graph'}->unique_tsize($target);
 	my $length = edge_length($weight);
 
 	# check whether this edge to the target node should be snipped or not.
-	if (should_snip($a, $source, $target))
+	if ((defined $roots) && ($source eq $a->{'file'}))
+	  {
+		# increment the number of virtual root nodes to generate
+		${$roots}++;
+
+		# generate an edge from the virtual root node
+		print "\t\"$source/${$roots}\" -> \"$target\" [len=$length];\n";
+	  }
+	elsif (should_snip($a, $source, $target))
 	  {
 		# if so, add target to the cluster for this source
 		$snipped->{$source} ||= [];
@@ -244,15 +279,26 @@ sub print_edges
 	my ($a, $snipped) = @_;
 	my $mesh = $a->{'mesh'};
 
+	# only generate virtual roots if we have > 3 child on root node
+	my $x;
+	if (scalar keys %{$mesh->{$a->{'file'}}} > 3) 
+	  {
+		my $roots;
+		$x = \$roots;
+	  }
+
 	# walk over each source node
 	for my $source (sort keys %$mesh)
 	  {
 		# walk over each target node for this source
 		for my $target (keys %{$mesh->{$source}})
 		  {
-			print_edge($a, $source, $target, $snipped);
+			print_edge($a, $source, $target, $snipped, $x);
 		  }
 	  }
+
+	# return the number of virtual root nodes to generate
+	(defined $x) ? $$x : 0;
 }
 
 #
@@ -289,8 +335,9 @@ sub graph2
 	my ($a) = @_;
 	my %snipped;
 	print_ghead($a);
-	print_edges($a, \%snipped);
+	my $roots = print_edges($a, \%snipped);
 	print_nodes($a, \%snipped);
+	print_root($a, $roots);
 	print_gfoot($a);
 }
 
