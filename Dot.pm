@@ -129,6 +129,12 @@ sub should_snip
 	return 1;
 }
 
+sub by_unique_tsize
+{
+	my ($g, $node, $snipped) = @_;
+	sort {$g->unique_tsize($b) <=> $g->unique_tsize($a)} @{$snipped->{$node}};
+}
+
 sub print_node
 {
 	my ($a, $node, $snipped) = @_;
@@ -148,8 +154,9 @@ sub print_node
 		$shape = "box";
 
 		# generate the list of snipped headers
-		$snips = "\\n~\\n";
-		for my $target (@{$snipped->{$node}})
+		$snips = "\\n\\n";
+
+		for my $target (by_unique_tsize($g, $node, $snipped))
 		  {
 			my $nn = $g->unique_tsize($target);
 			my $tt = $g->total_tsize($a->{'file'})->{$target} || "?";
