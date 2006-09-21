@@ -56,44 +56,59 @@ my $graph;
 
 sub by_total
 {
-	$by_edge_hash->{$a} <=> $by_edge_hash->{$b} ||
+	$by_edge_hash->{$b} <=> $by_edge_hash->{$a} ||
 	$a cmp $b;
 }
 
 sub by_unique
 {
-	$graph->unique_tsize($a) <=> $graph->unique_tsize($b) ||
+	$graph->unique_tsize($b) <=> $graph->unique_tsize($a) ||
 	$a cmp $b;
 }
 
-sub report1
+sub by_name
 {
-	my ($a) = @_;
+	$a cmp $b;
+}
+
+my ($e, $n, $t);
+
+format fmt =
+     @>>>> - @<<<<<<<<  @<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< 
+     $n, $t, $e
+.
+sub do_report
+{
+	my ($a, $func) = @_;
 	my ($g, $file, $mesh) = ($a->{'graph'}, $a->{'file'}, $a->{'mesh'});
 	my $total = $g->total_tsize($file);
 	$by_edge_hash = $total;
 	$graph = $g;
-	for my $e (sort by_total keys %$mesh)
+	$~ = "fmt";
+	print "\n    Unique - Total      Filename\n";
+	for my $z (sort $func keys %$mesh)
 	  {
-		my $t = $total->{$e} || "?";
-		my $n = $g->unique_tsize($e);
-		print "\t$t\t$e ($n)\n";
+		$e = $z;
+		$t = $total->{$e} || "?";
+		$n = $g->unique_tsize($e);
+		#print "\t$e $n - $t\n";
+		write;
 	  }
 }
 
-sub report2
+sub total
 {
-	my ($a) = @_;
-	my ($g, $file, $mesh) = ($a->{'graph'}, $a->{'file'}, $a->{'mesh'});
-	my $total = $g->total_tsize($file);
-	$by_edge_hash = $total;
-	$graph = $g;
-	for my $e (sort by_unique keys %$mesh)
-	  {
-		my $t = $total->{$e} || "?";
-		my $n = $g->unique_tsize($e);
-		print "\t$n\t$e ($t)\n";
-	  }
+	do_report(shift, \&by_total);
+}
+
+sub unique
+{
+	do_report(shift, \&by_unique);
+}
+
+sub name
+{
+	do_report(shift, \&by_name);
 }
 
 1;

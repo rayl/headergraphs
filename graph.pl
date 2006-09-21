@@ -29,6 +29,7 @@ use Gather::Git;
 use Graph;
 use Analysis;
 use Dot;
+use Report;
 
 ##############################################################################
 #
@@ -94,6 +95,28 @@ sub repl
 	print "\n\n";
 }
 
+sub banner
+{
+	my $n = $_[0];
+	my $l = length($n);
+	print ("=" x 80 . "\n");
+	print (" " x (40-($l/2)) . "$_[0]\n");
+	print ("=" x 80 . "\n");
+}
+
+sub report
+{
+	# my ($file, $clevel, $plevel, $count) = @_;
+	my $a = Analysis->new($graph, (@_));
+	banner($_[0]);
+	print "\n\nNodes sorted by unique tsize\n";
+	Report::unique($a);
+	print "\nNodes sorted by total tsize\n";
+	Report::total($a);
+	print "\n\nNodes sorted by name\n";
+	Report::name($a);
+}
+
 sub graph
 {
 	# my ($file, $clevel, $plevel, $count) = @_;
@@ -126,6 +149,11 @@ sub x
 	show($_[0], -1, 0, 2);
 }
 
+sub z
+{
+	report($_[0], -1, 0, 2);
+}
+
 sub help
 {
 	print <<EOF;
@@ -135,6 +163,8 @@ sub help
   graph file,out,in,cut
   show file,out,in,cut
   x file
+  report file,out,in,cut
+  z file
 EOF
 }
 
