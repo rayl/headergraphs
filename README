@@ -71,6 +71,8 @@ this has occurred.
   Boxes are header files which have had one or more links to child
   nodes snipped in order to relax the graph.
 
+  Circles are the places where the root node children were snipped,
+  in the case that root had more than 3 children.
 
 
 Node Colors:
@@ -79,10 +81,10 @@ Different colors are used to flag interesting nodes.
 
   Orange represents the root node of the graph.
 
-  Blue represents the "primary inclusion hierarchy".  In other words,
-  the inclusion hierarchy formed by the files with large unique tsizes.
-  This inclusion chain almost always remains contiguous and is rarely
-  snipped.
+  Blue represents the "backbone" of the inclusion hierarchy.  This is
+  the set of files with the largest unique tsizes. The theory is that
+  these files represent the "most important" concepts used by the
+  root node.
 
   Yellow represents a popular inclusion target with small unique tsize.
 
@@ -98,7 +100,7 @@ Conceptually, colors are applied in the following order:
   - The entire graph is painted green.
   - Backbone nodes are then painted blue.
   - Cutpoint targets are painted yellow.
-  - Cutpoint targets with very large tsizes are painted red.
+  - Yellow nodes with very large tsizes are repainted red.
   - Finally, the root node is painted orange.
 
 
