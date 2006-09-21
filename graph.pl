@@ -112,12 +112,12 @@ sub show
 {
 	# my ($file, $clevel, $plevel, $count) = @_;
 	my $dot = graph @_;
-	my $ps = $dot;
-	$ps =~ s/\.dot$/.ps/;
+	my $jpg = $dot;
+	$jpg =~ s/\.dot$/.jpg/;
 	print "Running dot...\n";
-	system "dot", "-Tps", "-o", $ps, $dot;
+	system "dot", "-Tjpg", "-o", $jpg, $dot;
 	print "Displaying graph...\n";
-	system "kghostview", $ps;
+	system "gwenview", $jpg;
 	0;
 }
 
