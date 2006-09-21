@@ -69,7 +69,7 @@ sub by_unique
 sub report1
 {
 	my ($a) = @_;
-	my ($g, $file, $mesh, $cuts) = ($a->{'graph'}, $a->{'file'}, $a->{'mesh'}, $a->{'cuts'});
+	my ($g, $file, $mesh) = ($a->{'graph'}, $a->{'file'}, $a->{'mesh'});
 	my $total = $g->total_tsize($file);
 	$by_edge_hash = $total;
 	$graph = $g;
@@ -84,7 +84,7 @@ sub report1
 sub report2
 {
 	my ($a) = @_;
-	my ($g, $file, $mesh, $cuts) = ($a->{'graph'}, $a->{'file'}, $a->{'mesh'}, $a->{'cuts'});
+	my ($g, $file, $mesh) = ($a->{'graph'}, $a->{'file'}, $a->{'mesh'});
 	my $total = $g->total_tsize($file);
 	$by_edge_hash = $total;
 	$graph = $g;
