@@ -43,6 +43,11 @@ my $gatherer = new Gather::Linux("/opt/BR/src/linux", "x86_64");
 # the raw inclusion information
 my $graph;
 
+# the output format flag and extension
+my $flag = "png";
+my $ext = "png";
+my @viewer = ("gwenview", "-f");
+
 
 sub do_it
 {
@@ -131,16 +136,38 @@ sub graph
 	$o;
 }
 
+sub fmt
+{
+	my ($type) = @_;
+
+	if ($type eq "png")
+	  {
+		($flag, $ext, @viewer) = ("png", "png", "gwenview", "-f");
+	  }
+	elsif ($type eq "ps")
+	  {
+		($flag, $ext, @viewer) = ("ps", "ps", "kghostview");
+	  }
+	elsif ($type eq "jpg")
+	  {
+		($flag, $ext, @viewer) = ("jpg", "jpg", "gwenview", "-f");
+	  }
+	else
+	  {
+		print "Unknown type: $type\n";
+	  }
+}
+
 sub show
 {
 	# my ($file, $clevel, $plevel, $count) = @_;
 	my $dot = graph @_;
-	my $png = $dot;
-	$png =~ s/\.dot$/.png/;
+	my $out = $dot;
+	$out =~ s/\.dot$/.$ext/;
 	print "Running dot...\n";
-	system "dot", "-Tpng", "-o", $png, $dot;
+	system "dot", "-T$flag", "-o", $out, $dot;
 	print "Displaying graph...\n";
-	system "gwenview", "-f", $png;
+	system @viewer, $out;
 	0;
 }
 
@@ -161,6 +188,7 @@ sub help
   save_it
   load_it
   graph file,out,in,cut
+  fmt ["png"|"ps"|"jpg"]
   show file,out,in,cut
   x file
   report file,out,in,cut
