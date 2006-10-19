@@ -249,7 +249,7 @@ sub help
 EOF
 }
 
-#load_it;
-#x "linux/sched.h";
+load_it;
+show2 "linux/skbuff.h";
 repl;
 
