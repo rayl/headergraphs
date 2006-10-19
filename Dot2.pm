@@ -145,7 +145,36 @@ sub print_nodes
 
 	for my $node (keys %{$a->{'nodelist'}})
 	  {
-		print_node($a, $node, $snipped);
+		if ($node ne $a->{'file'})
+		  {
+			print_node($a, $node, $snipped);
+		  }
+	  }
+}
+
+#
+# Print the root node(s).
+#
+sub print_root
+{
+	my ($a, $roots) = @_;
+
+	my $node = $a->{'file'};
+
+	my $g = $a->{'graph'};
+
+	my $t = $a->{'cfiles'}->{$node} || 0;
+	my $h = $a->{'hfiles'}->{$node} || 0;
+	my $n = $g->upsize($node);
+
+	my $fill = "#ff8000";
+	my $shape = "house";
+
+	print "\t\"$node\" [label=\"${node}\\n${t} - ${h} - ${n}\",shape=${shape},fillcolor=\"${fill}\",style=filled];\n";
+
+	for (; $roots != 0; $roots--)
+	  {
+		print "\t\"$node/$roots\" [label=\"*\",shape=circle,fillcolor=\"#ff8000\",style=filled];\n";
 	  }
 }
 
@@ -154,10 +183,18 @@ sub print_nodes
 #
 sub print_edge
 {
-	my ($a, $source, $target, $snipped) = @_;
+	my ($a, $source, $target, $snipped, $roots) = @_;
 
 	# check whether this edge to the target node should be snipped or not.
-	if (should_snip($a, $source, $target))
+	if ((defined $roots) && ($source eq $a->{'file'}))
+	  {
+		# increment the number of virtual root nodes to generate
+		${$roots}++;
+
+		# generate an edge from the virtual root node
+		print "\t\"$target\" -> \"$source/${$roots}\";\n";
+	  }
+	elsif (should_snip($a, $source, $target))
 	  {
 		# if so, add source to the cluster for this target
 		$snipped->{$target} ||= [];
@@ -178,15 +215,26 @@ sub print_edges
 	my ($a, $snipped) = @_;
 	my $mesh = $a->{'mesh'};
 
+	# only generate virtual roots if we have > 3 child on root node
+	my $roots;
+	if (scalar keys %{$mesh->{$a->{'file'}}} > 3) 
+	  {
+		my $x;
+		$roots = \$x;
+	  }
+
 	# walk over each source node
 	for my $source (sort keys %$mesh)
 	  {
 		# walk over each target node for this source
 		for my $target (keys %{$mesh->{$source}})
 		  {
-			print_edge($a, $source, $target, $snipped);
+			print_edge($a, $source, $target, $snipped, $roots);
 		  }
 	  }
+
+	# return the number of virtual root nodes to generate
+	(defined $roots) ? $$roots : 0;
 }
 
 #
@@ -223,8 +271,9 @@ sub graph2
 	my ($a) = @_;
 	my %snipped;
 	print_ghead($a);
-	print_edges($a, \%snipped);
+	my $roots = print_edges($a, \%snipped);
 	print_nodes($a, \%snipped);
+	print_root($a, $roots);
 	print_gfoot($a);
 }
 
