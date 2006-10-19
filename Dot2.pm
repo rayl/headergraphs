@@ -93,6 +93,11 @@ sub should_snip
 {
 	my ($a, $source, $target) = @_;
 
+	# snip the edge if this source file is included from
+	# too many other header files
+	return 1 if $a->{'hfiles'}->{$source} > 4;
+
+	# otherwise, keep the edge
 	return 0;
 }
 
@@ -107,8 +112,20 @@ sub print_node
 
 	my $fill = ($node eq $a->{'file'}) ? "#800000" : "#ffffff";
 	my $shape = "ellipse";
+	my $snips = "";
 
-	print "\t\"$node\" [label=\"${node}\\n${t} - ${h}\",shape=${shape},fillcolor=\"${fill}\",style=filled];\n";
+	if (exists $snipped->{$node})
+	  {
+		$shape = "box";
+
+		for my $source (@{$snipped->{$node}})
+		  {
+			$snips .= "$source\\n";
+		  }
+		$snips .= "~~~\\n";
+	  }
+
+	print "\t\"$node\" [label=\"${snips}${node}\\n${t} - ${h}\",shape=${shape},fillcolor=\"${fill}\",style=filled];\n";
 }
 
 #
@@ -132,15 +149,11 @@ sub print_edge
 	my ($a, $source, $target, $snipped) = @_;
 
 	# check whether this edge to the target node should be snipped or not.
-	if ($a->{'hfiles'}->{$source} > 4)
+	if (should_snip($a, $source, $target))
 	  {
-		# skip this edge
-	  }
-	elsif (should_snip($a, $source, $target))
-	  {
-		# if so, add target to the cluster for this source
-		$snipped->{$source} ||= [];
-		push @{$snipped->{$source}}, $target;
+		# if so, add source to the cluster for this target
+		$snipped->{$target} ||= [];
+		push @{$snipped->{$target}}, $source;
 	  }
 	else
 	  {
