@@ -138,7 +138,7 @@ sub we_want_src_file
 sub interesting_src_files
 {
 	my ($z, $d) = @_;
-	sort grep {$z->we_want_src_file($_)} <$d/*.c>;
+	sort grep {$z->we_want_src_file($_)} <$d/*.[ch]>;
 }
 
 #
