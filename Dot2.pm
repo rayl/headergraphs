@@ -129,18 +129,22 @@ sub should_snip
 	return 1;
 }
 
+sub by_upsize
+{
+	my ($g, $node, $snipped) = @_;
+	sort {$g->upsize($b) <=> $g->upsize($a)} @{$snipped->{$node}};
+}
+
 sub print_node
 {
 	my ($a, $node, $snipped) = @_;
 
 	my $g = $a->{'graph'};
-	my $t = $a->{'cfiles'}->{$node} || 0;
-	my $h = $a->{'hfiles'}->{$node} || 0;
 	my $n = $g->upsize($node);
 
 	my $snips = "";
 	my $shape;
-	my $count = "${t} - ${h} - ${n}";
+	my $count = "$n";
 	my $fill;
 
 	if (exists $snipped->{$node})
@@ -151,12 +155,11 @@ sub print_node
 		# generate the list of snipped headers
 		$snips = "\\n\\n";
 
-		for my $source (@{$snipped->{$node}})
+		for my $source (by_upsize($g, $node, $snipped))
 		  {
-			my $t2 = $a->{'cfiles'}->{$source} || 0;
-			my $h2 = $a->{'hfiles'}->{$source} || 0;
-			my $n2 = $g->upsize($source);
-			$snips .= "\\n$source  $t2 - $h2 - $n2";
+			my $nn = $g->upsize($source);
+			my $xx = scalar @{$a->{'cuts'}->{$source}};
+			$snips .= "$source  $nn - $xx\\n";
 		  }
 	  }
 
@@ -177,17 +180,18 @@ sub print_node
 		$fill = backbone_color($n);
 	  }
 
+	# generate the node
 	print "\t\"$node\" [label=\"${node}\\n${count}${snips}\",shape=${shape},fillcolor=\"${fill}\",style=filled];\n";
 }
 
 #
-# Print all nodes
+# Print all nodes except root.
 #
 sub print_nodes
 {
 	my ($a, $snipped) = @_;
 
-	for my $node (sort keys %{$a->{'nodelist'}})
+	for my $node (keys %{$a->{'nodelist'}})
 	  {
 		if ($node ne $a->{'file'})
 		  {
@@ -206,15 +210,14 @@ sub print_root
 	my $node = $a->{'file'};
 
 	my $g = $a->{'graph'};
-
-	my $t = $a->{'cfiles'}->{$node} || 0;
-	my $h = $a->{'hfiles'}->{$node} || 0;
 	my $n = $g->upsize($node);
 
-	my $fill = "#ff8000";
+	my $snips = "";
+	my $count = "$n";
 	my $shape = "house";
+	my $fill = "#ff8000";
 
-	print "\t\"$node\" [label=\"${node}\\n${t} - ${h} - ${n}\",shape=${shape},fillcolor=\"${fill}\",style=filled];\n";
+	print "\t\"$node\" [label=\"${node}\\n${count}${snips}\",shape=${shape},fillcolor=\"${fill}\",style=filled];\n";
 
 	for (; $roots != 0; $roots--)
 	  {
@@ -241,8 +244,8 @@ sub print_edge
 	elsif (should_snip($a, $source, $target))
 	  {
 		# if so, add source to the cluster for this target
-		$snipped->{$target} ||= [];
-		push @{$snipped->{$target}}, $source;
+		$snipped->{$source} ||= [];
+		push @{$snipped->{$source}}, $target;
 	  }
 	else
 	  {
