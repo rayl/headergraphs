@@ -71,12 +71,14 @@ sub new
 	# which are included "many" times in the inclusion graph
 	# of that root.
 	$z->{'too_many'} = {};
+	$z->{'too_many_p'} = {};
 
 	# the indegree used as the definition of "many".
 	# the results of too_many() are cached, but depend on the
 	# indegree used as the value of "many".  if this value
 	# changes, we notice and flush the cache.
 	$z->{'many'} = undef;
+	$z->{'many_p'} = undef;
 
 	# return the new empty graph object
 	$z;
@@ -391,6 +393,41 @@ sub too_many
 	  }
 
 	$z->{'too_many'}->{$node} ||= $z->_too_many($node, {}, $many);
+}
+
+# Calculate the too_many list for a given root node.
+sub _too_many_p
+{
+	# count tracks how often a file is included.  many is the indegree
+	# used as the threshold for "too many" inclusions
+	my ($z, $node, $count, $many) = @_;
+
+	# increase the number of times this node has been included
+	$count->{$node}++;
+
+	# process each of our children, unless we have already processed the
+	# current node, in which case we have already done them.
+	map {$z->_too_many_p($_, $count, $many)} $z->parents($node) unless $count->{$node} > 1;
+
+	# return a list of all nodes whose inclusion count exceeds the
+	# threshold value
+	[ grep {$count->{$_} > $many} keys %$count ];
+}
+
+# Look up (or calculate and cache) the too_many list for a given root node.
+sub too_many_p
+{
+	# many is the indegree used as the threshold for "many" inclusions
+	my ($z, $node, $many) = @_;
+
+	# flush the too_many cache if the definition of "many" changes
+	unless (defined($z->{'many_p'}) && ($z->{'many_p'} == $many))
+	  {
+		$z->{'too_many_p'} = {};
+		$z->{'many_p'} = $many;
+	  }
+
+	$z->{'too_many_p'}->{$node} ||= $z->_too_many_p($node, {}, $many);
 }
 
 package Graph::Node;

@@ -109,6 +109,46 @@ sub count_nested
 }
 
 #
+# Based on the "too many" criteria, identify nodes whose incoming edges could
+# be snipped in order to relax the graph and count how many times they are
+# included.
+#
+sub find_potential_cutpoints
+{
+	my ($z) = @_;
+
+	# ask the graph to scan the inclusion tree rooted at 'file' and return
+	# a list of nodes with 'many' or more incoming edges.  these are the potential
+	# cutpoints.  create a hash named 'm' to hold the set of nodes including
+	# these cutpoints.
+	my %m = map {$_ => []} @{$z->{'graph'}->too_many_p($z->{'file'}, $z->{'many'})};
+
+	# walk over every edge in the mesh incrementing the inclusion counter
+	# each time we see a potential cutpoint as the edge target.
+	for my $source (keys %{$z->{'mesh'}})
+	  {
+		for my $target (keys %{$z->{'mesh'}->{$source}})
+		  {
+			if (exists $m{$target})
+			  {
+				push @{$m{$target}}, $source;
+			  }
+		  }
+	  }
+
+	# sort each potential cutpoint list by source unique tsize
+	my $g = $z->{'graph'};
+	for my $target (keys %m)
+	  {
+		my $x = $m{$target};
+		$m{$target} = [ sort {$g->ucsize($b) <=> $g->ucsize($a)} @{$x} ];
+	  }
+
+	# save the list of cutpoints and associated inclusion counts
+	$z->{'cuts'} = \%m;
+}
+
+#
 # Create a new analysis object.  Given:
 #
 #    a graph
@@ -119,7 +159,7 @@ sub count_nested
 #
 sub new
 {
-	my ($type, $g, $file) = @_;
+	my ($type, $g, $file, $many) = @_;
 
 	# analysis objects use a hash representation
 	my $z = bless {}, ref $type || $type;
@@ -127,6 +167,7 @@ sub new
 	# save the parms for this analysis
 	$z->{'graph'} = $g;		# the graph to analyse
 	$z->{'file'} = $file;		# the root node for this analysis
+	$z->{'many'} = $many || 2;	# how many inclusions is "too many"
 
 	# perform the analysis
 	$z->{'mesh'} = {};
@@ -137,6 +178,7 @@ sub new
 	$z->remove;
 	$z->collapse;
 	$z->count_nested;
+	$z->find_potential_cutpoints;
 
 	# return the new object
 	$z;

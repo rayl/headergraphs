@@ -92,13 +92,41 @@ sub heavy_color
 sub should_snip
 {
 	my ($a, $source, $target) = @_;
+	my $cuts = $a->{'cuts'};
 
-	# snip the edge if this source file is included from
-	# too many other header files
-	return 1 if $a->{'hfiles'}->{$source} > 4;
+	# we should not snip this edge unless the target has "too many"
+	# incoming edges
+	return 0 unless exists $cuts->{$target};
 
-	# otherwise, keep the edge
-	return 0;
+	# we know that there are more then one incoming edges, so figure out
+	# how many there are
+	my $n = scalar @{$cuts->{$target}};
+
+	# this target has lots of incoming edges, but we always want the one
+	# with the smallest unique tsize to reamin intact, no matter what.
+	# this avoids disconnected subtrees floating over to the right side
+	# of the page.
+	return 0 if $cuts->{$target}->[$n-1] eq $source;
+	#return 0 if $cuts->{$target}->[0] eq $source;
+
+	# this is one of the less important links to the target. we prefer to
+	# snip these edges unless the target is a part of the backbone.  in
+	# that case, we'd like this "primary hierarchy" to remain contiguous
+	# on the graph
+	my $weight = $a->{'graph'}->upsize($target);
+	return 1 unless backbone($weight);
+
+	# this node is part of the blue backbone.  if there are less than 3
+	# incoming edges, we want to keep things contiguous.
+	return 0 if scalar @{$cuts->{$target}} < 3;
+
+	# the node is part of the backbone, but has too many incoming edges
+	# to keep everything contiguous while maintaining a clean layout.
+	# we know it's not the lightest incoming edge, so check next one and
+	# keep it, snipping the rest.
+	return 0 if $cuts->{$target}->[$n-2] eq $source;
+	#return 0 if $cuts->{$target}->[1] eq $source;
+	return 1;
 }
 
 sub print_node
