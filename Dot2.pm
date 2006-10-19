@@ -31,6 +31,26 @@ package Dot2;
 my @threshold = (100, 200, 300, 500);
 
 #
+# Decide whether a node is "backbone" or not, based on the unique
+# tsize.
+#
+sub backbone
+{
+	my ($weight) = @_;
+	$weight >= $threshold[0];
+}
+
+#
+# Decide whether a node is "heavy" or not, based on the unique
+# tsize.
+#
+sub heavy
+{
+	my ($weight) = @_;
+	$weight >= $threshold[2];
+}
+
+#
 # Nodes are colored yellow, red or blue if they have sufficiently
 # large unique tsize.  The saturation of the color rises with
 # increasing unique tsize.
@@ -46,13 +66,23 @@ sub saturation
 }
 
 #
-# Target nodes (included many times) have a yellowish color.
+# Backbone nodes are yellowish.
 #
-sub target_color
+sub backbone_color
 {
 	my ($weight) = @_;
 	my $c = saturation($weight);
 	"#ffff${c}";
+}
+
+#
+# Heavy nodes are reddish.
+#
+sub heavy_color
+{
+	my ($weight) = @_;
+	my $c = saturation($weight);
+	"#ff${c}${c}";
 }
 
 #
@@ -79,9 +109,12 @@ sub print_node
 
 	my $t = $a->{'cfiles'}->{$node} || 0;
 	my $h = $a->{'hfiles'}->{$node} || 0;
-	my $n = $t + $h;
+	my $n = $g->upsize($node);
 
-	my $fill = ($node eq $a->{'file'}) ? "#ff8080" : ($n > 99) ? target_color($n) : "#c0ffc0";
+	my $fill = ($node eq $a->{'file'})  ? "#ff8080"          :
+	           heavy($n)                ? heavy_color($n)    :
+	           backbone($n)             ? backbone_color($n) :
+	                                      "#c0ffc0";
 	my $shape = "ellipse";
 	my $snips = "";
 
@@ -96,7 +129,7 @@ sub print_node
 		$snips .= "~~~\\n";
 	  }
 
-	print "\t\"$node\" [label=\"${snips}${node}\\n${t} - ${h}\",shape=${shape},fillcolor=\"${fill}\",style=filled];\n";
+	print "\t\"$node\" [label=\"${snips}${node}\\n${t} - ${h} - ${n}\",shape=${shape},fillcolor=\"${fill}\",style=filled];\n";
 }
 
 #

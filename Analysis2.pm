@@ -95,6 +95,7 @@ sub collapse
 sub count_nested
 {
 	my ($z) = @_;
+	my $g = $z->{'graph'};
 
 	# for each file which is included by others
 	for my $source (keys %{$z->{'mesh'}})
@@ -131,6 +132,7 @@ sub new
 	$z->{'mesh'} = {};
 	$z->{'nodelist'} = {};
 	$z->{'cfiles'} = {};
+	$z->{'hfiles'} = {};
 	$z->collect_parents($file, -1, {});
 	$z->remove;
 	$z->collapse;
