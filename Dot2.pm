@@ -92,47 +92,8 @@ sub backbone_color
 sub should_snip
 {
 	my ($a, $source, $target) = @_;
-	my $cuts = $a->{'cuts'};
 
-	# we should not snip this edge unless the target has "too many"
-	# incoming edges
-	return 0 unless exists $cuts->{$target};
-
-	# we know that there are more then one incoming edges, so figure out
-	# how many there are
-	my $n = scalar @{$cuts->{$target}};
-
-	# this target has lots of incoming edges, but we always want the one
-	# with the smallest unique tsize to reamin intact, no matter what.
-	# this avoids disconnected subtrees floating over to the right side
-	# of the page.
-	return 0 if $cuts->{$target}->[$n-1] eq $source;
-	#return 0 if $cuts->{$target}->[0] eq $source;
-
-	# this is one of the less important links to the target. we prefer to
-	# snip these edges unless the target is a part of the backbone.  in
-	# that case, we'd like this "primary hierarchy" to remain contiguous
-	# on the graph
-	my $weight = $a->{'graph'}->unique_tsize($target);
-	return 1 unless backbone($weight);
-
-	# this node is part of the blue backbone.  if there are less than 3
-	# incoming edges, we want to keep things contiguous.
-	return 0 if scalar @{$cuts->{$target}} < 3;
-
-	# the node is part of the backbone, but has too many incoming edges
-	# to keep everything contiguous while maintaining a clean layout.
-	# we know it's not the lightest incoming edge, so check next one and
-	# keep it, snipping the rest.
-	return 0 if $cuts->{$target}->[$n-2] eq $source;
-	#return 0 if $cuts->{$target}->[1] eq $source;
-	return 1;
-}
-
-sub by_unique_tsize
-{
-	my ($g, $node, $snipped) = @_;
-	sort {$g->unique_tsize($b) <=> $g->unique_tsize($a)} @{$snipped->{$node}};
+	return 0;
 }
 
 sub print_node
@@ -140,15 +101,18 @@ sub print_node
 	my ($a, $node, $snipped) = @_;
 
 	my $g = $a->{'graph'};
+
 	my $t = $a->{'cfiles'}->{$node} || 0;
-	my $fill = "#ffffff";
+	my $h = $a->{'hfiles'}->{$node} || 0;
+
+	my $fill = ($node eq $a->{'file'}) ? "#800000" : "#ffffff";
 	my $shape = "ellipse";
 
-	print "\t\"$node\" [label=\"${node}\\n${t}\",shape=${shape},fillcolor=\"${fill}\",style=filled];\n";
+	print "\t\"$node\" [label=\"${node}\\n${t} - ${h}\",shape=${shape},fillcolor=\"${fill}\",style=filled];\n";
 }
 
 #
-# Print all nodes except root.
+# Print all nodes
 #
 sub print_nodes
 {
@@ -156,54 +120,8 @@ sub print_nodes
 
 	for my $node (keys %{$a->{'nodelist'}})
 	  {
-		if ($node ne $a->{'file'})
-		  {
-			print_node($a, $node, $snipped);
-		  }
+		print_node($a, $node, $snipped);
 	  }
-}
-
-#
-# Print the root node(s).
-#
-sub print_root
-{
-	my ($a, $roots) = @_;
-
-	my $node = $a->{'file'};
-
-	my $g = $a->{'graph'};
-	my $t = $g->total_tsize($a->{'file'})->{$node} || "?";
-	my $n = $g->unique_tsize($node);
-
-	my $snips = "";
-	my $count = "$n - $t";
-	my $shape = "house";
-	my $fill = "#ff8000";
-
-	print "\t\"$node\" [label=\"${node}\\n${count}${snips}\",shape=${shape},fillcolor=\"${fill}\",style=filled];\n";
-
-	for (; $roots != 0; $roots--)
-	  {
-		print "\t\"$node/$roots\" [label=\"*\",shape=circle,fillcolor=\"#ff8000\",style=filled];\n";
-	  }
-}
-
-#
-# Decide how long an edge should be, based on the unique tsize.
-# Edges pointing to nodes with small unique tsizes can be long, while
-# edges pointing to nodes with large unique tsizes will be short.
-# this is useful for the radial graph layout.  it helps the "heavy"
-# nodes with large subtrees to cluster near the center of the spider web.
-#
-sub edge_length
-{
-	my ($weight) = @_;
-	if     ($weight <  10) { 5.0 }
-	elsif  ($weight <  30) { 3.0 }
-	elsif  ($weight < 100) { 1.0 }
-	elsif  ($weight < 150) { 0.5 }
-	else                   { 0.1 }
 }
 
 #
@@ -211,20 +129,12 @@ sub edge_length
 #
 sub print_edge
 {
-	my ($a, $source, $target, $snipped, $roots) = @_;
-
-	# pick a length for this edge, based on unique tsize of the target node.
-	my $weight = $a->{'graph'}->unique_tsize($target);
-	my $length = edge_length($weight);
+	my ($a, $source, $target, $snipped) = @_;
 
 	# check whether this edge to the target node should be snipped or not.
-	if ((defined $roots) && ($source eq $a->{'file'}))
+	if ($a->{'hfiles'}->{$source} > 4)
 	  {
-		# increment the number of virtual root nodes to generate
-		${$roots}++;
-
-		# generate an edge from the virtual root node
-		print "\t\"$source/${$roots}\" -> \"$target\" [len=$length];\n";
+		# skip this edge
 	  }
 	elsif (should_snip($a, $source, $target))
 	  {
@@ -235,7 +145,7 @@ sub print_edge
 	else
 	  {
 		# if not, generate the edge
-		print "\t\"$source\" -> \"$target\" [len=$length];\n";
+		print "\t\"$source\" -> \"$target\" [dir=\"back\"];\n";
 	  }
 }
 
@@ -247,26 +157,15 @@ sub print_edges
 	my ($a, $snipped) = @_;
 	my $mesh = $a->{'mesh'};
 
-	# only generate virtual roots if we have > 3 child on root node
-	my $x;
-	if (scalar keys %{$mesh->{$a->{'file'}}} > 3) 
-	  {
-		my $roots;
-		$x = \$roots;
-	  }
-
 	# walk over each source node
 	for my $source (sort keys %$mesh)
 	  {
 		# walk over each target node for this source
 		for my $target (keys %{$mesh->{$source}})
 		  {
-			print_edge($a, $source, $target, $snipped, $x);
+			print_edge($a, $source, $target, $snipped);
 		  }
 	  }
-
-	# return the number of virtual root nodes to generate
-	(defined $x) ? $$x : 0;
 }
 
 #
@@ -303,9 +202,8 @@ sub graph2
 	my ($a) = @_;
 	my %snipped;
 	print_ghead($a);
-	my $roots = print_edges($a, \%snipped);
+	print_edges($a, \%snipped);
 	print_nodes($a, \%snipped);
-	print_root($a, $roots);
 	print_gfoot($a);
 }
 

@@ -90,6 +90,24 @@ sub collapse
 }
 
 #
+# Count number of headers which nest each header file.
+#
+sub count_nested
+{
+	my ($z) = @_;
+
+	# for each file which is included by others
+	for my $source (keys %{$z->{'mesh'}})
+	  {
+		# get the list of headers which nest us
+		my @targets = keys %{$z->{'mesh'}->{$source}};
+
+		# and remember how many there were
+		$z->{'hfiles'}->{$source} = scalar(@targets);
+	  }
+}
+
+#
 # Create a new analysis object.  Given:
 #
 #    a graph
@@ -116,6 +134,7 @@ sub new
 	$z->collect_parents($file, -1, {});
 	$z->remove;
 	$z->collapse;
+	$z->count_nested;
 
 	# return the new object
 	$z;
