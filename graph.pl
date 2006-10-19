@@ -29,6 +29,8 @@ use Gather::Git;
 use Graph;
 use Analysis;
 use Dot;
+use Analysis2;
+use Dot2;
 use Report;
 
 ##############################################################################
@@ -133,6 +135,22 @@ sub graph
 	my $stdout = select O;
 	Dot::graph2(Analysis->new($graph, (@_)));
 	select $stdout;
+	close O;
+	$o;
+}
+
+sub graph2
+{
+	# my ($file) = @_;
+	my ($o) = @_;
+	$o =~ s/[.\/]/_/g;
+	$o =~ s/$/.dot/;
+	$o =~ s/^/tmp\//;
+	open O, ">$o" || return;
+	my $stdout = select O;
+	Dot2::graph2(Analysis2->new($graph, (@_)));
+	select $stdout;
+	close O;
 	$o;
 }
 
@@ -162,6 +180,19 @@ sub show
 {
 	# my ($file, $clevel, $plevel, $count) = @_;
 	my $dot = graph @_;
+	my $out = $dot;
+	$out =~ s/\.dot$/.$ext/;
+	print "Running dot...\n";
+	system "dot", "-T$flag", "-o", $out, $dot;
+	print "Displaying graph...\n";
+	system @viewer, $out;
+	0;
+}
+
+sub show2
+{
+	# my ($file) = @_;
+	my $dot = graph2 @_;
 	my $out = $dot;
 	$out =~ s/\.dot$/.$ext/;
 	print "Running dot...\n";
@@ -207,8 +238,10 @@ sub help
   save_it
   load_it
   graph file,out,in,cut
+  graph2 file
   fmt ["png"|"ps"|"jpg"]
   show file,out,in,cut
+  show2 file
   x file
   report file,out,in,cut
   z file
