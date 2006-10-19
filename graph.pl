@@ -181,6 +181,25 @@ sub z
 	report($_[0], -1, 0, 2);
 }
 
+sub world
+{
+	my @nodes = grep {$graph->unique_tsize($_) > 10} grep {$_ =~ m/\.h$/} sort $graph->nodes;
+	my @nodes2 = sort {$graph->unique_tsize($a) <=> $graph->unique_tsize($b)} @nodes;
+
+	print "Doing " . scalar(@nodes2) . " nodes, max tsize " . $graph->unique_tsize($nodes2[-1]) . "\n";
+	my $i = "00000";
+	for my $file (@nodes2)
+	  {
+		my $u = $graph->unique_tsize($file);
+		my $t = $graph->total_tsize($file)->{$file};
+		print "$u - $t  $i-$file\n";
+		my $dot = graph($file, -1, 0, 2);
+		$dot =~ s,tmp/,,;
+		`mv tmp/$dot tmp/$i-$dot`;
+		$i++;
+	  }
+}
+
 sub help
 {
 	print <<EOF;
@@ -193,6 +212,7 @@ sub help
   x file
   report file,out,in,cut
   z file
+  world
 EOF
 }
 
