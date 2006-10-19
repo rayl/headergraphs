@@ -62,7 +62,7 @@ sub by_total
 
 sub by_unique
 {
-	$graph->unique_tsize($b) <=> $graph->unique_tsize($a) ||
+	$graph->ucsize($b) <=> $graph->ucsize($a) ||
 	$a cmp $b;
 }
 
@@ -81,7 +81,7 @@ sub do_report
 {
 	my ($a, $func) = @_;
 	my ($g, $file, $mesh) = ($a->{'graph'}, $a->{'file'}, $a->{'mesh'});
-	my $total = $g->total_tsize($file);
+	my $total = $g->tcsize($file);
 	$by_edge_hash = $total;
 	$graph = $g;
 	$~ = "fmt";
@@ -90,7 +90,7 @@ sub do_report
 	  {
 		$e = $z;
 		$t = $total->{$e} || "?";
-		$n = $g->unique_tsize($e);
+		$n = $g->ucsize($e);
 		#print "\t$e $n - $t\n";
 		write;
 	  }

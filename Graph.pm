@@ -57,13 +57,15 @@ sub new
 	# root nodes to integers defining the total number of
 	# header files that would be included if that root node
 	# were compiled standalone with _NO_ include guards in use.
-	$z->{'total_tsize'} = {};
+	$z->{'tcsize'} = {};
+	$z->{'tpsize'} = {};
 
 	# the unique transitive size, one per node.  a hash of
 	# root nodes to integers defining the unique number of
 	# header files that would be included if that root node
 	# were compiled standalone with include guards in use.
-	$z->{'unique_tsize'} = {};
+	$z->{'ucsize'} = {};
+	$z->{'upsize'} = {};
 
 	# the too_many list, a hash of root nodes to arrays of nodes
 	# which are included "many" times in the inclusion graph
@@ -265,12 +267,12 @@ sub dfs
 }
 
 # Calculate the unique transitive size for a given root node.
-sub _unique_tsize
+sub _usize
 {
 	# node is the current node during the traversal. map
 	# holds the _additional_ unique nodes found from each node
 	# when they were current during the traversal.
-	my ($z, $node, $map) = @_;
+	my ($z, $node, $type, $map) = @_;
 
 	# if we've already visited this node during this particular
 	# traversal, then there are no additional unique nodes
@@ -288,7 +290,7 @@ sub _unique_tsize
 	$map->{$node} = 0;
 
 	# add up the additional unique tsizes of all our children
-	map {$t += $z->_unique_tsize($_, $map)} $z->children($node);
+	map {$t += $z->_usize($_, $type, $map)} $z->$type($node);
 
 	# save this total as our additional contribution to the overall
 	# tsize of the root node which started the current traversal. if
@@ -299,21 +301,28 @@ sub _unique_tsize
 }
 
 # Look up (or calculate and cache) the unique tsize for a given root node.
-sub unique_tsize
+sub ucsize
 {
 	my ($z, $node) = @_;
-	$z->{'unique_tsize'}->{$node} ||= $z->_unique_tsize($node, {});
+	$z->{'ucsize'}->{$node} ||= $z->_usize($node, "children", {});
+}
+
+# Look up (or calculate and cache) the unique tsize for a given root node.
+sub upsize
+{
+	my ($z, $node) = @_;
+	$z->{'upsize'}->{$node} ||= $z->_usize($node, "parents", {});
 }
 
 # Calculate the total transitive size for all nodes in the inclusion tree
 # rooted at a given root node.
-sub _total_tsize
+sub _tsize
 {
 	# node is the current node during the traversal. total
 	# holds the total tsize for each node in the inclusion tree
 	# rooted at the original root node.  visiting contains an entry
 	# for each active node during the depth-first search.
-	my ($z, $node, $total, $visiting) = @_;
+	my ($z, $node, $type, $total, $visiting) = @_;
 
 	# detect and prevent infinite recursion from circular inclusions.
 	return if $visiting->{$node};
@@ -326,7 +335,7 @@ sub _total_tsize
 	map {$total->{$_}++} keys %$visiting;
 
 	# process each of our children in turn
-	map { $z->_total_tsize($_, $total, $visiting) } $z->children($node);
+	map { $z->_tsize($_, $type, $total, $visiting) } $z->$type($node);
 
 	# remove this node from the active inclusion path
 	delete $visiting->{$node};
@@ -336,10 +345,17 @@ sub _total_tsize
 }
 
 # Look up (or calculate and cache) the total tsize for a given root node.
-sub total_tsize
+sub tcsize
 {
 	my ($z, $node) = @_;
-	$z->{'total_tsize'}->{$node} ||= $z->_total_tsize($node, {}, {});
+	$z->{'tcsize'}->{$node} ||= $z->_tsize($node, "children", {}, {});
+}
+
+# Look up (or calculate and cache) the total tsize for a given root node.
+sub tpsize
+{
+	my ($z, $node) = @_;
+	$z->{'tpsize'}->{$node} ||= $z->_tsize($node, "parents", {}, {});
 }
 
 # Calculate the too_many list for a given root node.

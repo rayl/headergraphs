@@ -113,7 +113,7 @@ sub should_snip
 	# snip these edges unless the target is a part of the backbone.  in
 	# that case, we'd like this "primary hierarchy" to remain contiguous
 	# on the graph
-	my $weight = $a->{'graph'}->unique_tsize($target);
+	my $weight = $a->{'graph'}->ucsize($target);
 	return 1 unless backbone($weight);
 
 	# this node is part of the blue backbone.  if there are less than 3
@@ -129,10 +129,10 @@ sub should_snip
 	return 1;
 }
 
-sub by_unique_tsize
+sub by_ucsize
 {
 	my ($g, $node, $snipped) = @_;
-	sort {$g->unique_tsize($b) <=> $g->unique_tsize($a)} @{$snipped->{$node}};
+	sort {$g->ucsize($b) <=> $g->ucsize($a)} @{$snipped->{$node}};
 }
 
 sub print_node
@@ -140,8 +140,8 @@ sub print_node
 	my ($a, $node, $snipped) = @_;
 
 	my $g = $a->{'graph'};
-	my $t = $g->total_tsize($a->{'file'})->{$node} || "?";
-	my $n = $g->unique_tsize($node);
+	my $t = $g->tcsize($a->{'file'})->{$node} || "?";
+	my $n = $g->ucsize($node);
 
 	my $snips = "";
 	my $shape;
@@ -156,10 +156,10 @@ sub print_node
 		# generate the list of snipped headers
 		$snips = "\\n\\n";
 
-		for my $target (by_unique_tsize($g, $node, $snipped))
+		for my $target (by_ucsize($g, $node, $snipped))
 		  {
-			my $nn = $g->unique_tsize($target);
-			my $tt = $g->total_tsize($a->{'file'})->{$target} || "?";
+			my $nn = $g->ucsize($target);
+			my $tt = $g->tcsize($a->{'file'})->{$target} || "?";
 			my $xx = scalar @{$a->{'cuts'}->{$target}};
 			$snips .= "$target $nn - $tt - $xx\\n";
 		  }
@@ -212,8 +212,8 @@ sub print_root
 	my $node = $a->{'file'};
 
 	my $g = $a->{'graph'};
-	my $t = $g->total_tsize($a->{'file'})->{$node} || "?";
-	my $n = $g->unique_tsize($node);
+	my $t = $g->tcsize($a->{'file'})->{$node} || "?";
+	my $n = $g->ucsize($node);
 
 	my $snips = "";
 	my $count = "$n - $t";
@@ -253,7 +253,7 @@ sub print_edge
 	my ($a, $source, $target, $snipped, $roots) = @_;
 
 	# pick a length for this edge, based on unique tsize of the target node.
-	my $weight = $a->{'graph'}->unique_tsize($target);
+	my $weight = $a->{'graph'}->ucsize($target);
 	my $length = edge_length($weight);
 
 	# check whether this edge to the target node should be snipped or not.

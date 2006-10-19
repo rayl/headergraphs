@@ -94,7 +94,7 @@ sub find_potential_cutpoints
 	for my $target (keys %m)
 	  {
 		my $x = $m{$target};
-		$m{$target} = [ sort {$g->unique_tsize($b) <=> $g->unique_tsize($a)} @{$x} ];
+		$m{$target} = [ sort {$g->ucsize($b) <=> $g->ucsize($a)} @{$x} ];
 	  }
 
 	# save the list of cutpoints and associated inclusion counts
