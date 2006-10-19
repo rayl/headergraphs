@@ -31,6 +31,21 @@ package Dot2;
 my @threshold = (100, 200, 300, 500);
 
 #
+# Nodes are colored yellow, red or blue if they have sufficiently
+# large unique tsize.  The saturation of the color rises with
+# increasing unique tsize.
+#
+sub saturation
+{
+	my ($weight) = @_;
+	if     ($weight < $threshold[0]) { "c0" }
+	elsif  ($weight < $threshold[1]) { "90" }
+	elsif  ($weight < $threshold[2]) { "60" }
+	elsif  ($weight < $threshold[3]) { "30" }
+	else                             { "00" }
+}
+
+#
 # Decide whether a node is "backbone" or not, based on the unique
 # tsize.
 #
@@ -51,38 +66,23 @@ sub heavy
 }
 
 #
-# Nodes are colored yellow, red or blue if they have sufficiently
-# large unique tsize.  The saturation of the color rises with
-# increasing unique tsize.
+# Target nodes (included many times) have a reddish or yellowish color.
 #
-sub saturation
+sub target_color
 {
 	my ($weight) = @_;
-	if     ($weight < $threshold[0]) { "c0" }
-	elsif  ($weight < $threshold[1]) { "90" }
-	elsif  ($weight < $threshold[2]) { "60" }
-	elsif  ($weight < $threshold[3]) { "30" }
-	else                             { "00" }
+	my $c = saturation($weight);
+	heavy($weight) ? "#ff${c}${c}" : "#ffff${c}";
 }
 
 #
-# Backbone nodes are yellowish.
+# Backbone nodes have a bluish color, non-backbone are green.
 #
 sub backbone_color
 {
 	my ($weight) = @_;
 	my $c = saturation($weight);
-	"#ffff${c}";
-}
-
-#
-# Heavy nodes are reddish.
-#
-sub heavy_color
-{
-	my ($weight) = @_;
-	my $c = saturation($weight);
-	"#ff${c}${c}";
+	backbone($weight) ? "#${c}${c}ff" : "#${c}ff${c}";
 }
 
 #
@@ -134,23 +134,22 @@ sub print_node
 	my ($a, $node, $snipped) = @_;
 
 	my $g = $a->{'graph'};
-
 	my $t = $a->{'cfiles'}->{$node} || 0;
 	my $h = $a->{'hfiles'}->{$node} || 0;
 	my $n = $g->upsize($node);
 
-	my $fill = ($node eq $a->{'file'})  ? "#ff8080"          :
-	           heavy($n)                ? heavy_color($n)    :
-	           backbone($n)             ? backbone_color($n) :
-	                                      "#c0ffc0";
-	my $shape = "ellipse";
 	my $snips = "";
+	my $shape;
+	my $count = "${t} - ${h} - ${n}";
+	my $fill;
 
 	if (exists $snipped->{$node})
 	  {
+		# we are printing a node with trimmed outgoing edges
 		$shape = "box";
 
-		$snips .= "\\n~~~";
+		# generate the list of snipped headers
+		$snips = "\\n\\n";
 
 		for my $source (@{$snipped->{$node}})
 		  {
@@ -161,7 +160,24 @@ sub print_node
 		  }
 	  }
 
-	print "\t\"$node\" [label=\"${node}\\n${t} - ${h} - ${n}${snips}\",shape=${shape},fillcolor=\"${fill}\",style=filled];\n";
+	if (exists $a->{'cuts'}->{$node})
+	  {
+		# we are printing a node with many incoming edges...
+		$shape ||= "ellipse";
+		$fill = target_color($n);
+
+		my $x = scalar @{$a->{'cuts'}->{$node}};
+		$count .= " - $x";
+	  }
+
+	else
+	  {
+		# we are printing an ordinary node
+		$shape ||= "ellipse";
+		$fill = backbone_color($n);
+	  }
+
+	print "\t\"$node\" [label=\"${node}\\n${count}${snips}\",shape=${shape},fillcolor=\"${fill}\",style=filled];\n";
 }
 
 #
@@ -171,7 +187,7 @@ sub print_nodes
 {
 	my ($a, $snipped) = @_;
 
-	for my $node (keys %{$a->{'nodelist'}})
+	for my $node (sort keys %{$a->{'nodelist'}})
 	  {
 		if ($node ne $a->{'file'})
 		  {
