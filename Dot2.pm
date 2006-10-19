@@ -126,7 +126,10 @@ sub print_node
 
 		for my $source (@{$snipped->{$node}})
 		  {
-			$snips .= "\\n$source";
+			my $t2 = $a->{'cfiles'}->{$source} || 0;
+			my $h2 = $a->{'hfiles'}->{$source} || 0;
+			my $n2 = $g->upsize($source);
+			$snips .= "\\n$source  $t2 - $h2 - $n2";
 		  }
 	  }
 
