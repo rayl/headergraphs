@@ -140,7 +140,7 @@ sub print_node
 	my ($a, $node, $snipped) = @_;
 
 	my $g = $a->{'graph'};
-	my $t = $g->{'mesh'}->{'cfiles'}->{$node} || 0;
+	my $t = $a->{'cfiles'}->{$node} || 0;
 	my $fill = "#ffffff";
 	my $shape = "ellipse";
 
