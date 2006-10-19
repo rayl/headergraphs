@@ -122,14 +122,15 @@ sub print_node
 	  {
 		$shape = "box";
 
+		$snips .= "\\n~~~";
+
 		for my $source (@{$snipped->{$node}})
 		  {
-			$snips .= "$source\\n";
+			$snips .= "\\n$source";
 		  }
-		$snips .= "~~~\\n";
 	  }
 
-	print "\t\"$node\" [label=\"${snips}${node}\\n${t} - ${h} - ${n}\",shape=${shape},fillcolor=\"${fill}\",style=filled];\n";
+	print "\t\"$node\" [label=\"${node}\\n${t} - ${h} - ${n}${snips}\",shape=${shape},fillcolor=\"${fill}\",style=filled];\n";
 }
 
 #
@@ -162,7 +163,7 @@ sub print_edge
 	else
 	  {
 		# if not, generate the edge
-		print "\t\"$source\" -> \"$target\" [dir=\"back\"];\n";
+		print "\t\"$target\" -> \"$source\";\n";
 	  }
 }
 
